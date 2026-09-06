@@ -14,11 +14,11 @@
     "@fluentui/react-icons": "^2.0.339",
     "@tailwindcss/vite": "^4.3.3",
     "clsx": "^2.1.1",
+    "firebase": "^11.10.0",
     "framer-motion": "^13.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3",
-    "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
     "zustand": "^5.0.15"

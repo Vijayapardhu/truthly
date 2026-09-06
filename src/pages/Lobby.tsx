@@ -44,7 +44,10 @@ export default function Lobby() {
   const [resolvedRoomId, setResolvedRoomId] = useState<string | null>(null)
 
   const navState = location.state as { playerId?: string; nickname?: string; avatarId?: string; roomCode?: string } | null
-  const playerId = navState?.playerId
+  const incomingPlayerId = navState?.playerId
+
+  const session = loadSession()
+  const playerId = incomingPlayerId || session?.playerId
 
   useEffect(() => {
     if (!roomId) return
@@ -66,20 +69,20 @@ export default function Lobby() {
           roomCode: res.room.roomCode,
           hostId: res.room.hostId,
           topics: res.room.topics,
-          intensity: res.room.intensity,
+          intensity: res.room.intensity as any,
           allowSkipping: res.room.allowSkipping,
           skipsPerPlayer: res.room.skipsPerPlayer,
-          status: res.room.status,
-          createdAt: res.room.createdAt,
+          status: res.room.status as any,
+          createdAt: typeof res.room.createdAt?.toMillis === 'function' ? res.room.createdAt.toMillis() : Date.now(),
           lastActivity: Date.now(),
         }
-        const mappedPlayers: Player[] = res.players.map((p: { id: string; nickname: string; avatarId: string; isHost: boolean; skipCount: number; joinedAt: number }) => ({
+        const mappedPlayers: Player[] = res.players.map((p) => ({
           id: p.id,
           nickname: p.nickname,
           avatarId: p.avatarId,
           isHost: p.isHost,
           skipCount: p.skipCount,
-          joinedAt: p.joinedAt,
+          joinedAt: typeof p.joinedAt?.toMillis === 'function' ? p.joinedAt.toMillis() : Date.now(),
         }))
         setRoom(mappedRoom)
         setPlayers(mappedPlayers)

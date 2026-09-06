@@ -1,25 +1,20 @@
-const API_BASE = typeof window !== 'undefined' ? window.location.origin : '/'
-
-async function request(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  })
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Request failed' }))
-    throw new Error(error.error || `HTTP ${res.status}`)
-  }
-
-  if (res.status === 204) return null
-  return res.json()
-}
+import {
+  createRoom,
+  getRoomByCode,
+  getRoom,
+  joinRoom as firestoreJoinRoom,
+  startGame as firestoreStartGame,
+  getChatMessages,
+  sendChatMessage,
+  subscribeToPlayers,
+  subscribeToGame,
+  subscribeToChat,
+  updateGameState,
+  updateRoomLastActivity,
+} from '../services/firestore'
 
 export const api = {
-  createRoom: (data: {
+  async createRoom(data: {
     name: string
     visibility: string
     topics: string[]
@@ -28,43 +23,59 @@ export const api = {
     skipsPerPlayer: number
     hostName: string
     hostAvatarId: string
-  }) =>
-    request('/api/rooms/create', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  getRoomByCode: (code: string) => request(`/api/rooms/code/${encodeURIComponent(code)}`),
-
-  async resolveRoomId(identifier: string): Promise<string> {
-    try {
-      const res = await this.getRoomByCode(identifier)
-      return res.id
-    } catch {
-      const res = await this.getRoom(identifier)
-      return res.room.id
+  }) {
+    const code = `${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+    const hostId = `host-${Date.now()}`
+    const result = await createRoom({
+      ...data,
+      roomCode: code,
+      hostId,
+      visibility: data.visibility as 'public' | 'private',
+    })
+    return {
+      room: result.room,
+      player: result.player,
     }
   },
 
-  getRoom: (id: string) => request(`/api/rooms/${encodeURIComponent(id)}`),
+  async getRoomByCode(code: string) {
+    return getRoomByCode(code)
+  },
 
-  joinRoom: (roomId: string, data: { nickname: string; avatarId: string }) =>
-    request(`/api/rooms/${encodeURIComponent(roomId)}/join`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  async resolveRoomId(identifier: string): Promise<string> {
+    try {
+      const room = await getRoomByCode(identifier)
+      return room.id
+    } catch {
+      return identifier
+    }
+  },
 
-  startGame: (roomId: string, playerId: string) =>
-    request(`/api/rooms/${encodeURIComponent(roomId)}/start`, {
-      method: 'POST',
-      body: JSON.stringify({ playerId }),
-    }),
+  async getRoom(id: string) {
+    const result = await getRoom(id)
+    return result
+  },
 
-  getChatMessages: (roomId: string) => request(`/api/chat/${encodeURIComponent(roomId)}`),
+  async joinRoom(roomId: string, data: { nickname: string; avatarId: string }) {
+    const result = await firestoreJoinRoom(roomId, data)
+    return { player: result.player }
+  },
 
-  sendChatMessage: (roomId: string, data: { playerId: string; playerName: string; playerAvatarId: string; text: string }) =>
-    request(`/api/chat/${encodeURIComponent(roomId)}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+  async startGame(roomId: string, playerId: string) {
+    return firestoreStartGame(roomId, playerId)
+  },
+
+  async getChatMessages(roomId: string) {
+    return getChatMessages(roomId)
+  },
+
+  async sendChatMessage(roomId: string, data: { playerId: string; playerName: string; playerAvatarId: string; text: string }) {
+    return sendChatMessage(roomId, data)
+  },
+
+  subscribeToPlayers,
+  subscribeToGame,
+  subscribeToChat,
+  updateGameState,
+  updateRoomLastActivity,
 }

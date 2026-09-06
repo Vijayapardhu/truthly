@@ -45,6 +45,9 @@ export default function Game() {
   const resetRoom = useRoomStore((s) => s.reset)
   const identity = useIdentityStore((s) => s.identity)
 
+  const session = loadSession()
+  const playerId = session?.playerId
+
   const [phase, setPhase] = useState<TurnPhase>('choice')
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null)
   const [lastType, setLastType] = useState<'truth' | 'dare'>('truth')
@@ -74,9 +77,11 @@ export default function Game() {
 
   useEffect(() => {
     if (!roomId || !identity) return
-    saveSession({ roomCode: room?.roomCode || roomId, playerId: identity.nickname, nickname: identity.nickname, avatarId: identity.avatarId })
+    const session = loadSession()
+    const playerId = session?.playerId || identity.nickname
+    saveSession({ roomCode: room?.roomCode || roomId, playerId, nickname: identity.nickname, avatarId: identity.avatarId })
     const socket = connectSocket()
-    socket.emit('join-room', { roomId, playerId: identity.nickname })
+    socket.emit('join-room', { roomId, playerId })
 
     const handleGameStateUpdated = (data: { game: { id: string; turnOrder: string[]; currentPlayerIndex: number; state: string; usedQuestionIds: string[] }; currentPlayerId: string | null }) => {
       const gs = data.game
@@ -120,7 +125,7 @@ export default function Game() {
     setCurrentQuestion(q)
     const socket = getSocket()
     if (socket.connected) {
-      socket.emit('select-truth', { roomId: roomId, playerId: identity?.nickname })
+      socket.emit('select-truth', { roomId: roomId, playerId: playerId })
     }
   }
 
@@ -134,7 +139,7 @@ export default function Game() {
     setCurrentQuestion("Do your best celebrity impression for 20 seconds.")
     const socket = getSocket()
     if (socket.connected) {
-      socket.emit('select-dare', { roomId: roomId, playerId: identity?.nickname })
+      socket.emit('select-dare', { roomId: roomId, playerId: playerId })
     }
   }
 
@@ -154,14 +159,14 @@ export default function Game() {
     setSelectedPlayerId(null)
     const socket = getSocket()
     if (socket.connected) {
-      socket.emit('complete-turn', { roomId: roomId, playerId: identity?.nickname })
+      socket.emit('complete-turn', { roomId: roomId, playerId: playerId })
     }
   }
 
   const handleLeave = async () => {
     const socket = getSocket()
     if (socket.connected && roomId && identity) {
-      socket.emit('leave-room', { roomId, playerId: identity.nickname })
+      socket.emit('leave-room', { roomId, playerId })
     }
     resetRoom()
     clearSession()

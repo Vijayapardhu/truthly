@@ -117,9 +117,32 @@
 - Updated `JoinRoom`, `IdentitySetup`, `HostIdentitySetup`, `PrivateRoomShare`, and `Discover` to use room codes for navigation and links
 - Fixed host start button by changing host detection from nickname match to `playerId === host.id`
 
+## Firebase Migration
+- Installed Firebase SDK
+- Created `src/lib/firebase.ts` with Firebase app initialization
+- Created `src/services/firestore.ts` with Firestore data layer:
+  - Room, player, game, and chat message types
+  - CRUD operations for rooms and players
+  - Realtime subscriptions for players, game state, and chat
+  - Transaction-based turn advancement
+- Replaced `src/lib/api.ts` with Firebase-based service calls
+- Replaced `src/lib/socket.ts` with Firestore-backed realtime event system
+- Updated `Lobby.tsx` and `Game.tsx` to use Firebase subscriptions
+- Added `firestore.rules` for development (open read/write)
+- Removed Socket.io dependency from frontend
+
+## Frontend Fixes
+- Fixed lobby/game reset on player join by removing `resetRoom()` from cleanup
+- Added `localStorage` session persistence for room code and player identity
+- Room URLs now use short room codes
+- Host start button fixed by comparing `playerId` with host ID
+- Added session rehydration on page refresh
+
 ## Next Steps
-1. Add chat/reactions UI in Game page.
-2. Implement Discover backend and page with real room data.
-3. Integrate AI question generation into game flow.
-4. Add database layer when a compatible option is available.
-5. Security hardening, tests, and Vercel deployment.
+1. Set up proper Firebase security rules for production
+2. Add Firebase Authentication for persistent user accounts
+3. Implement Discover page with real Firestore data
+4. Add chat UI to Game page
+5. Integrate AI question generation
+6. Mobile optimization and testing
+7. Deploy to Vercel with Firebase hosting
