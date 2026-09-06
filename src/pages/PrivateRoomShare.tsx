@@ -8,8 +8,8 @@ export default function PrivateRoomShare() {
   const room = useRoomStore((s) => s.room)
 
   const inviteLink = typeof window !== 'undefined'
-    ? `${window.location.origin}/room/${roomId}`
-    : `/room/${roomId}`
+    ? `${window.location.origin}/room/${room?.roomCode || roomId}`
+    : `/room/${room?.roomCode || roomId}`
 
   const copyCode = () => {
     if (room?.roomCode) {
@@ -52,7 +52,7 @@ export default function PrivateRoomShare() {
           </div>
         </div>
 
-        <Button size="md" variant="ghost" onClick={() => navigate(`/room/${roomId}`)}>
+        <Button size="md" variant="ghost" onClick={() => navigate(`/room/${room?.roomCode || roomId}`)}>
           Back to room
         </Button>
       </div>

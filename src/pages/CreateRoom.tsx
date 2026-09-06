@@ -4,9 +4,9 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import Chip from '../components/ui/Chip'
 import Toggle from '../components/ui/Toggle'
-import { generateRoomCode } from '../lib/utils'
 import { cn } from '../lib/utils'
 import type { Intensity, Visibility, Topic } from '../types'
+import { api } from '../lib/api'
 import { GlobeRegular } from '@fluentui/react-icons'
 
 const defaultTopics: Topic[] = [
@@ -36,11 +36,46 @@ export default function CreateRoom() {
   const [intensity, setIntensity] = useState<Intensity>('general')
   const [allowSkipping, setAllowSkipping] = useState(true)
   const [skipsPerPlayer, setSkipsPerPlayer] = useState(3)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleCreate = () => {
-    if (!name.trim()) return
-    const roomCode = generateRoomCode()
-    navigate('/host-identity', { state: { roomCode, roomName: name, visibility, topics: selectedTopics, customTopic, intensity, allowSkipping, skipsPerPlayer } })
+  const handleCreate = async () => {
+    if (!name.trim() || selectedTopics.length === 0 || isLoading) return
+    setError('')
+    setIsLoading(true)
+    try {
+      const topics = [...selectedTopics]
+      if (customTopic.trim()) {
+        topics.push(customTopic.trim())
+      }
+      const res = await api.createRoom({
+        name: name.trim(),
+        visibility,
+        topics,
+        intensity,
+        allowSkipping,
+        skipsPerPlayer,
+        hostName: 'Host',
+        hostAvatarId: 'Cat',
+      })
+      navigate('/host-identity', {
+        state: {
+          roomCode: res.room.roomCode,
+          roomId: res.room.id,
+          roomName: res.room.name,
+          visibility,
+          topics,
+          intensity,
+          allowSkipping,
+          skipsPerPlayer,
+          hostId: res.player.id,
+        },
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create room')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const toggleTopic = (topicId: string) => {
@@ -226,13 +261,19 @@ export default function CreateRoom() {
             )}
           </div>
 
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
           <Button
             size="lg"
             className="w-full h-14 sm:h-16 text-base sm:text-lg shadow-lg shadow-truth/20"
             onClick={handleCreate}
-            disabled={!name.trim() || selectedTopics.length === 0}
+            disabled={!name.trim() || selectedTopics.length === 0 || isLoading}
           >
-            Create Room →
+            {isLoading ? 'Creating...' : 'Create Room →'}
           </Button>
         </div>
       </div>

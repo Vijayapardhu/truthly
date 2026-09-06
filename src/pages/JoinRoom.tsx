@@ -2,14 +2,26 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import OTPInput from '../components/ui/OTPInput'
+import { api } from '../lib/api'
 
 export default function JoinRoom() {
   const navigate = useNavigate()
   const [code, setCode] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleJoin = () => {
-    if (!code.trim()) return
-    navigate('/identity', { state: { roomId: code.trim() } })
+  const handleJoin = async () => {
+    if (!code.trim() || isLoading) return
+    setError('')
+    setIsLoading(true)
+    try {
+      const res = await api.getRoomByCode(code.trim().toUpperCase())
+      navigate('/identity', { state: { roomId: res.id, roomCode: res.roomCode } })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Room not found')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -31,8 +43,14 @@ export default function JoinRoom() {
 
           <OTPInput length={6} value={code} onChange={setCode} onComplete={handleJoin} />
 
-          <Button size="lg" className="w-full shadow-lg shadow-truth/20" onClick={handleJoin} disabled={code.length !== 6}>
-            Join Room →
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
+          <Button size="lg" className="w-full shadow-lg shadow-truth/20" onClick={handleJoin} disabled={code.length !== 6 || isLoading}>
+            {isLoading ? 'Checking...' : 'Join Room →'}
           </Button>
         </div>
 

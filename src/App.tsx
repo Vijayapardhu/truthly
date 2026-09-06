@@ -1,5 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useIdentityStore } from './stores/identity-store'
+import { Routes, Route } from 'react-router-dom'
 import Landing from './pages/Landing'
 import CreateRoom from './pages/CreateRoom'
 import JoinRoom from './pages/JoinRoom'
@@ -11,14 +10,6 @@ import Discover from './pages/Discover'
 import PrivateRoomShare from './pages/PrivateRoomShare'
 import NotFound from './pages/NotFound'
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const identity = useIdentityStore((state) => state.identity)
-  if (!identity) {
-    return <Navigate to="/join" replace />
-  }
-  return <>{children}</>
-}
-
 export default function App() {
   return (
     <Routes>
@@ -28,9 +19,9 @@ export default function App() {
       <Route path="/identity" element={<IdentitySetup />} />
       <Route path="/host-identity" element={<HostIdentitySetup />} />
       <Route path="/discover" element={<Discover />} />
-      <Route path="/room/:roomId" element={<ProtectedRoute><Lobby /></ProtectedRoute>} />
-      <Route path="/room/:roomId/game" element={<ProtectedRoute><Game /></ProtectedRoute>} />
-      <Route path="/room/:roomId/private" element={<ProtectedRoute><PrivateRoomShare /></ProtectedRoute>} />
+      <Route path="/room/:roomId" element={<Lobby />} />
+      <Route path="/room/:roomId/game" element={<Game />} />
+      <Route path="/room/:roomId/private" element={<PrivateRoomShare />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )

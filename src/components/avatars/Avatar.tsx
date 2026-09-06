@@ -20,17 +20,6 @@ const avatarColors: Record<string, string> = {
   Octopus: 'bg-lavender',
 }
 
-const avatarEmojis: Record<string, string> = {
-  Cat: '🐱',
-  Panda: '🐼',
-  Tiger: '🐯',
-  Pig: '🐷',
-  Monkey: '🐵',
-  Bear: '🐻',
-  Wolf: '🐺',
-  Octopus: '🐙',
-}
-
 const avatarIcons: Record<string, string> = {
   Cat: 'https://img.icons8.com/?size=100&id=YFj3GqUYUMFG&format=png&color=000000',
   Tiger: 'https://img.icons8.com/?size=100&id=gtx2QwlbvAak&format=png&color=000000',
@@ -61,7 +50,6 @@ export default function Avatar({ src, alt, avatarId, size = 'md', className, chi
     )
   }
 
-  const emoji = avatarId ? avatarEmojis[avatarId] : undefined
   const label = alt?.charAt(0).toUpperCase() || '?'
 
   return (
@@ -73,7 +61,7 @@ export default function Avatar({ src, alt, avatarId, size = 'md', className, chi
         className
       )}
     >
-      {children || (emoji ? <span className="leading-none">{emoji}</span> : <span className="font-semibold text-text-primary">{label}</span>)}
+      {children || <span className="font-semibold text-text-primary">{label}</span>}
     </div>
   )
 }

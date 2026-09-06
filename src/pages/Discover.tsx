@@ -1,15 +1,16 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import Avatar from '../components/avatars/Avatar'
 
 const rooms = [
-  { id: 'room1', name: 'Friday Night 🎉', players: 12, topics: ['Close', 'Funny', 'Friendship'] },
-  { id: 'room2', name: 'College Gang', players: 24, topics: ['General', 'College', 'Funny'] },
-  { id: 'room3', name: 'Late Night', players: 5, topics: ['Deep', 'Memories'] },
-  { id: 'room4', name: 'Chill Vibes', players: 8, topics: ['Funny', 'Close'] },
+  { id: 'room1', code: 'ABC123', name: 'Friday Night 🎉', players: 12, topics: ['Close', 'Funny', 'Friendship'] },
+  { id: 'room2', code: 'XYZ789', name: 'College Gang', players: 24, topics: ['General', 'College', 'Funny'] },
+  { id: 'room3', code: 'LMN456', name: 'Late Night', players: 5, topics: ['Deep', 'Memories'] },
+  { id: 'room4', code: 'PQJ101', name: 'Chill Vibes', players: 8, topics: ['Funny', 'Close'] },
 ]
 
 export default function Discover() {
+  const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-off-white flex flex-col items-center px-4 pt-12 pb-16">
       <div className="w-full max-w-2xl">
@@ -45,9 +46,14 @@ export default function Discover() {
                   ))}
                 </div>
               </div>
-              <Link to={`/room/${room.id}`}>
-                <Button size="sm">Join →</Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={() => navigate(`/join`)}>
+                  Enter Code
+                </Button>
+                <Link to={`/room/${room.code}`}>
+                  <Button size="sm">Join →</Button>
+                </Link>
+              </div>
             </div>
           ))}
         </div>

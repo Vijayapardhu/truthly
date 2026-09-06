@@ -5,6 +5,7 @@ import Input from '../components/ui/Input'
 import Avatar from '../components/avatars/Avatar'
 import { cn } from '../lib/utils'
 import { useIdentityStore } from '../stores/identity-store'
+import { api } from '../lib/api'
 import { CheckmarkRegular } from '@fluentui/react-icons'
 
 const avatarOptions = ['Cat', 'Panda', 'Tiger', 'Pig', 'Monkey', 'Bear', 'Wolf', 'Octopus']
@@ -15,14 +16,33 @@ export default function IdentitySetup() {
   const setIdentity = useIdentityStore((state) => state.setIdentity)
   const [nickname, setNickname] = useState('')
   const [avatarId, setAvatarId] = useState('Cat')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const roomState = location.state as { roomId?: string } | null
+  const roomState = location.state as { roomId?: string; roomCode?: string } | null
   const roomId = roomState?.roomId
+  const roomCode = roomState?.roomCode
 
-  const handleContinue = () => {
-    if (!nickname.trim() || !roomId) return
-    setIdentity({ nickname: nickname.trim(), avatarId })
-    navigate(`/room/${roomId}`)
+  const handleContinue = async () => {
+    if (!nickname.trim() || !roomId || isLoading) return
+    setError('')
+    setIsLoading(true)
+    try {
+      const res = await api.joinRoom(roomId, {
+        nickname: nickname.trim(),
+        avatarId,
+      })
+      setIdentity({ nickname: nickname.trim(), avatarId })
+      const session = { playerId: res.player.id, nickname: nickname.trim(), avatarId, roomCode: roomCode || roomId }
+      localStorage.setItem('truthly-session', JSON.stringify(session))
+      navigate(`/room/${roomCode || roomId}`, {
+        state: session,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to join room')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -68,8 +88,14 @@ export default function IdentitySetup() {
             </div>
           </div>
 
-          <Button size="lg" className="w-full mt-4 shadow-lg shadow-truth/20" onClick={handleContinue} disabled={!nickname.trim()}>
-            Continue →
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
+          <Button size="lg" className="w-full mt-4 shadow-lg shadow-truth/20" onClick={handleContinue} disabled={!nickname.trim() || isLoading}>
+            {isLoading ? 'Joining...' : 'Continue →'}
           </Button>
         </div>
       </div>

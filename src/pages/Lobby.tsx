@@ -1,59 +1,161 @@
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import Button from '../components/ui/Button'
-import Avatar from '../components/avatars/Avatar'
-import Logo from '../components/icons/Logo'
 import { useRoomStore } from '../stores/room-store'
 import { useIdentityStore } from '../stores/identity-store'
 import { PeopleRegular, CopyRegular, ShareRegular, SettingsRegular, ArrowRightRegular } from '@fluentui/react-icons'
 import type { Room, Player } from '../types'
+import { api } from '../lib/api'
+import { connectSocket, disconnectSocket } from '../lib/socket'
+import Button from '../components/ui/Button'
+import Logo from '../components/icons/Logo'
+import Avatar from '../components/avatars/Avatar'
 
 export default function Lobby() {
   const { roomId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const room = useRoomStore((s) => s.room)
   const players = useRoomStore((s) => s.players)
   const setRoom = useRoomStore((s) => s.setRoom)
   const setPlayers = useRoomStore((s) => s.setPlayers)
+  const resetRoom = useRoomStore((s) => s.reset)
   const identity = useIdentityStore((s) => s.identity)
 
   const [localRoom, setLocalRoom] = useState<Room | null>(room)
   const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [resolvedRoomId, setResolvedRoomId] = useState<string | null>(null)
+
+  const navState = location.state as { playerId?: string; nickname?: string; avatarId?: string; roomCode?: string } | null
+  const playerId = navState?.playerId
 
   useEffect(() => {
-    if (!room && roomId) {
-      const mockRoom: Room = {
-        id: roomId,
-        name: roomId === 'VCMP3J' ? 'Friday Night 🎉' : `Room ${roomId}`,
-        visibility: 'public',
-        roomCode: roomId,
-        hostId: 'host-1',
-        topics: ['Funny', 'Friendship', 'Memories'],
-        intensity: 'general',
-        allowSkipping: true,
-        skipsPerPlayer: 3,
-        status: 'lobby',
-        createdAt: Date.now(),
-        lastActivity: Date.now(),
+    if (!roomId) return
+    let mounted = true
+
+    async function loadRoom() {
+      if (!roomId) return
+      try {
+        const actualRoomId = await api.resolveRoomId(roomId)
+        if (!mounted) return
+        setResolvedRoomId(actualRoomId)
+
+        const res = await api.getRoom(actualRoomId)
+        if (!mounted) return
+        const mappedRoom: Room = {
+          id: res.room.id,
+          name: res.room.name,
+          visibility: res.room.visibility,
+          roomCode: res.room.roomCode,
+          hostId: res.room.hostId,
+          topics: res.room.topics,
+          intensity: res.room.intensity,
+          allowSkipping: res.room.allowSkipping,
+          skipsPerPlayer: res.room.skipsPerPlayer,
+          status: res.room.status,
+          createdAt: res.room.createdAt,
+          lastActivity: Date.now(),
+        }
+        const mappedPlayers: Player[] = res.players.map((p: { id: string; nickname: string; avatarId: string; isHost: boolean; skipCount: number; joinedAt: number }) => ({
+          id: p.id,
+          nickname: p.nickname,
+          avatarId: p.avatarId,
+          isHost: p.isHost,
+          skipCount: p.skipCount,
+          joinedAt: p.joinedAt,
+        }))
+        setRoom(mappedRoom)
+        setPlayers(mappedPlayers)
+        setLocalRoom(mappedRoom)
+        setLocalPlayers(mappedPlayers)
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load room')
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
       }
-      const mockPlayers: Player[] = [
-        { id: 'host-1', nickname: 'Mvp', avatarId: 'Cat', isHost: true, skipCount: 3, joinedAt: Date.now() },
-        { id: 'p2', nickname: 'Rahul', avatarId: 'Tiger', isHost: false, skipCount: 3, joinedAt: Date.now() },
-        { id: 'p3', nickname: 'Priya', avatarId: 'Panda', isHost: false, skipCount: 3, joinedAt: Date.now() },
-        { id: 'p4', nickname: 'Arjun', avatarId: 'Wolf', isHost: false, skipCount: 3, joinedAt: Date.now() },
-      ]
-      setRoom(mockRoom)
-      setPlayers(mockPlayers)
-      setLocalRoom(mockRoom)
-      setLocalPlayers(mockPlayers)
-    } else if (room) {
-      setLocalRoom(room)
-      setLocalPlayers(players)
     }
-  }, [room, roomId, setRoom, setPlayers, players])
+
+    loadRoom()
+
+    const socket = connectSocket()
+    socket.emit('join-room', { roomId, playerId })
+
+    const handlePlayerJoined = (data: { playerId: string; players: Player[] }) => {
+      setLocalPlayers(data.players)
+      setPlayers(data.players)
+    }
+
+    const handlePlayerLeft = (data: { playerId: string; players: Player[] }) => {
+      setLocalPlayers(data.players)
+      setPlayers(data.players)
+    }
+
+    const handleGameState = (data: { game: { id: string; turnOrder: string[]; currentPlayerIndex: number; state: string; usedQuestionIds: string[] }; currentPlayerId: string | null }) => {
+      const gs = data.game
+      useRoomStore.getState().setGame({
+        turnOrder: gs.turnOrder,
+        currentPlayerIndex: gs.currentPlayerIndex,
+        state: gs.state as any,
+        usedQuestionIds: gs.usedQuestionIds,
+        currentQuestion: undefined,
+      })
+      if (gs.state === 'choice') {
+        navigate(`/room/${roomId}/game`, { replace: true })
+      }
+    }
+
+    socket.on('player-joined', handlePlayerJoined)
+    socket.on('player-left', handlePlayerLeft)
+    socket.on('game-state', handleGameState)
+
+    return () => {
+      mounted = false
+      socket.emit('leave-room', { roomId, playerId })
+      socket.off('player-joined', handlePlayerJoined)
+      socket.off('player-left', handlePlayerLeft)
+      socket.off('game-state', handleGameState)
+      disconnectSocket()
+      resetRoom()
+    }
+  }, [roomId, playerId, setRoom, setPlayers, navigate, resetRoom])
+
+  useEffect(() => {
+    if (!identity && resolvedRoomId && !loading) {
+      navigate(`/identity`, {
+        replace: true,
+        state: { roomId: resolvedRoomId, roomCode: localRoom?.roomCode }
+      })
+    }
+  }, [identity, resolvedRoomId, loading, navigate, localRoom])
+
+  useEffect(() => {
+    if (localRoom?.roomCode && playerId) {
+      const session = { roomCode: localRoom.roomCode, playerId, nickname: identity?.nickname, avatarId: identity?.avatarId }
+      localStorage.setItem('truthly-session', JSON.stringify(session))
+    }
+  }, [localRoom?.roomCode, playerId, identity?.nickname, identity?.avatarId])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('truthly-session')
+    if (saved && !location.state && !resolvedRoomId) {
+      try {
+        const session = JSON.parse(saved)
+        if (session?.roomCode) {
+          navigate(`/room/${session.roomCode}`, { state: session, replace: true })
+        }
+      } catch {
+        // ignore bad session
+      }
+    }
+  }, [location.state, resolvedRoomId, navigate])
 
   const host = localPlayers.find((p) => p.isHost)
-  const isHost = !!identity && !!host && host.nickname === identity.nickname
+  const isHost = !!identity && !!host && playerId === host.id
   const topicLabels = localRoom?.topics.map((t) => t.charAt(0).toUpperCase() + t.slice(1)) || []
 
   const copyCode = () => {
@@ -61,8 +163,35 @@ export default function Lobby() {
   }
 
   const shareLink = () => {
-    const link = typeof window !== 'undefined' ? `${window.location.origin}/room/${roomId}` : `/room/${roomId}`
+    const link = typeof window !== 'undefined' ? `${window.location.origin}/room/${localRoom?.roomCode || roomId}` : `/room/${localRoom?.roomCode || roomId}`
     navigator.clipboard.writeText(link)
+  }
+
+  const handleStartGame = async () => {
+    if (!resolvedRoomId || !playerId) return
+    try {
+      await api.startGame(resolvedRoomId, playerId)
+      navigate(`/room/${roomId}/game`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start game')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-off-white flex items-center justify-center">
+        <div className="text-sm text-text-secondary">Loading room...</div>
+      </div>
+    )
+  }
+
+  if (error || !localRoom) {
+    return (
+      <div className="min-h-screen bg-off-white flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-sm text-red-600">{error || 'Room not found'}</p>
+        <Button size="md" variant="secondary" onClick={() => navigate('/')}>Back to Home</Button>
+      </div>
+    )
   }
 
   return (
@@ -88,7 +217,7 @@ export default function Lobby() {
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-lg space-y-6">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-primary">{localRoom?.name || 'Room'}</h1>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-primary">{localRoom.name}</h1>
             <div className="flex items-center justify-center gap-2 text-text-secondary">
               <PeopleRegular className="w-4 h-4" />
               <span className="text-sm">{localPlayers.length} player{localPlayers.length !== 1 ? 's' : ''}</span>
@@ -127,7 +256,7 @@ export default function Lobby() {
             <Button
               size="lg"
               className="w-full justify-center gap-2 shadow-lg shadow-truth/20"
-              onClick={() => navigate(`/room/${roomId}/game`)}
+              onClick={handleStartGame}
             >
               Start Game
               <ArrowRightRegular className="w-4 h-4" />
@@ -142,8 +271,8 @@ export default function Lobby() {
                 className="max-h-[160px] w-auto"
               />
               <div className="text-center">
-                <p className="text-sm font-semibold text-text-primary">{localRoom?.name}</p>
-                <p className="text-xs text-text-secondary font-mono">{localRoom?.roomCode}</p>
+                <p className="text-sm font-semibold text-text-primary">{localRoom.name}</p>
+                <p className="text-xs text-text-secondary font-mono">{localRoom.roomCode}</p>
               </div>
               <p className="text-sm text-text-secondary">Waiting for the host to start...</p>
             </div>
