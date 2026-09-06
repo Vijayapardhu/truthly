@@ -1,4 +1,4 @@
-const API_BASE = '/'
+const API_BASE = typeof window !== 'undefined' ? window.location.origin : '/'
 
 async function request(path: string, options: RequestInit = {}) {
   const res = await fetch(`${API_BASE}${path}`, {

@@ -10,6 +10,23 @@ import Button from '../components/ui/Button'
 import Logo from '../components/icons/Logo'
 import Avatar from '../components/avatars/Avatar'
 
+const SESSION_KEY = 'truthly-session'
+
+function loadSession() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveSession(session: { roomCode?: string; playerId?: string; nickname?: string; avatarId?: string }) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+}
+
 export default function Lobby() {
   const { roomId } = useParams()
   const navigate = useNavigate()
@@ -18,7 +35,6 @@ export default function Lobby() {
   const players = useRoomStore((s) => s.players)
   const setRoom = useRoomStore((s) => s.setRoom)
   const setPlayers = useRoomStore((s) => s.setPlayers)
-  const resetRoom = useRoomStore((s) => s.reset)
   const identity = useIdentityStore((s) => s.identity)
 
   const [localRoom, setLocalRoom] = useState<Room | null>(room)
@@ -69,6 +85,7 @@ export default function Lobby() {
         setPlayers(mappedPlayers)
         setLocalRoom(mappedRoom)
         setLocalPlayers(mappedPlayers)
+        saveSession({ roomCode: mappedRoom.roomCode, playerId, nickname: identity?.nickname, avatarId: identity?.avatarId })
       } catch (err) {
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Failed to load room')
@@ -120,9 +137,8 @@ export default function Lobby() {
       socket.off('player-left', handlePlayerLeft)
       socket.off('game-state', handleGameState)
       disconnectSocket()
-      resetRoom()
     }
-  }, [roomId, playerId, setRoom, setPlayers, navigate, resetRoom])
+  }, [roomId, playerId, setRoom, setPlayers, navigate])
 
   useEffect(() => {
     if (!identity && resolvedRoomId && !loading) {
@@ -134,25 +150,11 @@ export default function Lobby() {
   }, [identity, resolvedRoomId, loading, navigate, localRoom])
 
   useEffect(() => {
-    if (localRoom?.roomCode && playerId) {
-      const session = { roomCode: localRoom.roomCode, playerId, nickname: identity?.nickname, avatarId: identity?.avatarId }
-      localStorage.setItem('truthly-session', JSON.stringify(session))
+    const saved = loadSession()
+    if (saved?.roomCode && !roomId && !resolvedRoomId && !localRoom) {
+      navigate(`/room/${saved.roomCode}`, { state: saved, replace: true })
     }
-  }, [localRoom?.roomCode, playerId, identity?.nickname, identity?.avatarId])
-
-  useEffect(() => {
-    const saved = localStorage.getItem('truthly-session')
-    if (saved && !location.state && !resolvedRoomId) {
-      try {
-        const session = JSON.parse(saved)
-        if (session?.roomCode) {
-          navigate(`/room/${session.roomCode}`, { state: session, replace: true })
-        }
-      } catch {
-        // ignore bad session
-      }
-    }
-  }, [location.state, resolvedRoomId, navigate])
+  }, [roomId, resolvedRoomId, localRoom, navigate])
 
   const host = localPlayers.find((p) => p.isHost)
   const isHost = !!identity && !!host && playerId === host.id

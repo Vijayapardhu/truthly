@@ -11,6 +11,28 @@ import Avatar from '../components/avatars/Avatar'
 import { playSelectSound, playWinSound, resumeAudioContext } from '../lib/sound'
 import { lightImpact, mediumImpact, successImpact } from '../lib/haptic'
 
+const SESSION_KEY = 'truthly-session'
+
+function loadSession() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveSession(session: { roomCode?: string; playerId?: string; nickname?: string; avatarId?: string }) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+}
+
+function clearSession() {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(SESSION_KEY)
+}
+
 type TurnPhase = 'choice' | 'truth' | 'dare' | 'completed'
 
 export default function Game() {
@@ -52,8 +74,7 @@ export default function Game() {
 
   useEffect(() => {
     if (!roomId || !identity) return
-    const session = { roomCode: room?.roomCode || roomId, playerId: identity.nickname, nickname: identity.nickname, avatarId: identity.avatarId }
-    localStorage.setItem('truthly-session', JSON.stringify(session))
+    saveSession({ roomCode: room?.roomCode || roomId, playerId: identity.nickname, nickname: identity.nickname, avatarId: identity.avatarId })
     const socket = connectSocket()
     socket.emit('join-room', { roomId, playerId: identity.nickname })
 
@@ -76,9 +97,15 @@ export default function Game() {
     return () => {
       socket.off('game-state-updated', handleGameStateUpdated)
       disconnectSocket()
-      resetRoom()
     }
-  }, [roomId, identity, setGame, resetRoom])
+  }, [roomId, identity, setGame])
+
+  useEffect(() => {
+    const saved = loadSession()
+    if (saved?.roomCode && !roomId && !room) {
+      navigate(`/room/${saved.roomCode}`, { state: saved, replace: true })
+    }
+  }, [roomId, room, navigate])
 
   const handleTruth = () => {
     if (!isMyTurn || !selectedPlayerId) return
@@ -137,7 +164,7 @@ export default function Game() {
       socket.emit('leave-room', { roomId, playerId: identity.nickname })
     }
     resetRoom()
-    localStorage.removeItem('truthly-session')
+    clearSession()
     navigate(`/room/${roomId}`)
   }
 
