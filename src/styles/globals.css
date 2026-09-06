@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  --color-off-white: #f7f5f2;
+  --color-surface: #ffffff;
+  --color-surface-warm: #fff8f3;
+  --color-border: #e7e2db;
+  --color-text-primary: #1c1917;
+  --color-text-secondary: #8c8680;
+  --color-lavender: #c4b5fd;
+  --color-lavender-deep: #a78bfa;
+  --color-lavender-light: #f5f3ff;
+  --color-purple: #8b5cf6;
+  --color-pink: #f9a8d4;
+  --color-pink-deep: #ec4899;
+  --color-pink-light: #fdf2f8;
+  --color-peach: #fdba74;
+  --color-peach-deep: #f97316;
+  --color-peach-light: #fff7ed;
+  --color-blue: #93c5fd;
+  --color-blue-deep: #3b82f6;
+  --color-blue-light: #eff6ff;
+  --color-truth: #7c3aed;
+  --color-truth-light: #ede9fe;
+  --color-dare: #ea580c;
+  --color-dare-light: #fff7ed;
+  --color-cream: #fef3e2;
+  --color-cream-deep: #fde68a;
+
+  --font-display: "Matcha Mint", "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --font-body: "Chillin on Sunday", "Internet Friends", "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+}
+
+@font-face {
+  font-family: "Matcha Mint";
+  src: url("/matcha_mint/Matcha Mint.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Internet Friends";
+  src: url("/internet_friends/Internet Friends.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Chillin on Sunday";
+  src: url("/chillin_on_sunday/Chillin on Sunday.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-off-white);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+html {
+  scrollbar-width: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+::selection {
+  background-color: var(--color-lavender-light);
+  color: var(--color-text-primary);
+}
