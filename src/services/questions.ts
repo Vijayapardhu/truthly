@@ -1,3 +1,5 @@
+import { generateOpenAIQuestion } from './openai'
+
 const questionBank: Record<string, Record<string, string[]>> = {
   funny: {
     general: [
@@ -52,8 +54,11 @@ const questionBank: Record<string, Record<string, string[]>> = {
   },
 }
 
-export function getRandomQuestion(topics: string[], intensity: string): string {
+export async function getRandomQuestion(topics: string[], intensity: string): Promise<string> {
   const normalizedIntensity = intensity === 'general' || intensity === 'close' || intensity === 'deep' ? intensity : 'general'
+  const aiQuestion = await generateOpenAIQuestion(topics, normalizedIntensity)
+  if (aiQuestion) return aiQuestion
+
   const pool = topics.flatMap((topic) => questionBank[topic]?.[normalizedIntensity] || [])
   const fallback = topics.flatMap((topic) => questionBank[topic]?.general || [])
   const source = pool.length > 0 ? pool : fallback

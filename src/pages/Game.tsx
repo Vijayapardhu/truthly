@@ -113,6 +113,21 @@ export default function Game() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
 
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp)
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const handleReact = async (messageId: string, emoji: string) => {
+    if (!roomId || !playerId) return
+    await api.sendChatMessage(roomId, {
+      playerId,
+      playerName: identity?.nickname || 'Anonymous',
+      playerAvatarId: identity?.avatarId || 'Cat',
+      text: emoji,
+    })
+  }
+
   const currentPlayerIndex = game?.currentPlayerIndex ?? 0
   const currentPlayer = players[currentPlayerIndex] || players[0]
   const isMyTurn = !!identity && !!currentPlayer && currentPlayer.nickname === identity.nickname
@@ -350,8 +365,18 @@ export default function Game() {
                   <div className="flex-1">
                     <div className="flex items-baseline gap-2">
                       <p className="text-sm font-semibold text-text-primary">{msg.playerName}</p>
+                      <span className="text-[10px] text-text-secondary">{formatTime(msg.createdAt)}</span>
                     </div>
                     <p className="text-sm text-text-secondary break-words">{msg.text}</p>
+                    {Object.keys(msg.reactions).length > 0 && (
+                      <div className="flex gap-1 mt-1">
+                        {Object.entries(msg.reactions).map(([emoji, users]) => (
+                          <span key={emoji} className="text-xs bg-surface border border-border rounded-full px-1.5 py-0.5">
+                            {emoji} {users.length}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

@@ -78,23 +78,16 @@
 - Firebase config in `src/lib/firebase.ts`
 - Build output in `dist/`
 
-## Completed Steps
-1. ✅ Migrated from Express/Socket.io to Firebase/Firestore
-2. ✅ Added Firebase Anonymous Auth
-3. ✅ Implemented Discover page with live Firestore data
-4. ✅ Added chat UI to Game page
-5. ✅ Integrated AI question generation (intensity-aware pools)
-6. ✅ Added session hydration and localStorage persistence
-7. ✅ Fixed lobby/game reset on player join
-8. ✅ Added production Firestore security rules
-9. ✅ Added mobile optimizations
-10. ✅ Added Vercel SPA routing config
+## OpenRouter AI
+- AI questions generated via OpenRouter API
+- Config stored in Firestore `config/openrouter` document
+- Falls back to local question bank if no config or API call fails
+- Authenticated reads only for OpenRouter config document
 
 ## Next Steps
 1. Add Firebase Authentication for persistent user accounts (Google, Apple, etc.)
-2. Implement AI question generation via OpenAI/LLM API
-3. Add reactions and timestamps to chat UI
-4. Add room categories and search to Discover page
-5. Implement game statistics and history
-6. Add push notifications for room invites
-7. Deploy to Vercel and configure Firebase hosting
+2. Add reactions and timestamps to chat UI
+3. Add room categories and search to Discover page
+4. Implement game statistics and history
+5. Add push notifications for room invites
+6. Deploy to Vercel and configure Firebase hosting
