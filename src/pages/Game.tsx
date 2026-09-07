@@ -12,6 +12,7 @@ import { playSelectSound, playWinSound, resumeAudioContext } from '../lib/sound'
 import { lightImpact, mediumImpact, successImpact } from '../lib/haptic'
 import { api } from '../lib/api'
 import { getRandomQuestion } from '../services/questions'
+import type { Room, Player } from '../types'
 
 const SESSION_KEY = 'truthly-session'
 
@@ -54,10 +55,56 @@ export default function Game() {
   const game = useRoomStore((s) => s.game)
   const setGame = useRoomStore((s) => s.setGame)
   const resetRoom = useRoomStore((s) => s.reset)
+  const setRoom = useRoomStore((s) => s.setRoom)
+  const setPlayers = useRoomStore((s) => s.setPlayers)
   const identity = useIdentityStore((s) => s.identity)
 
   const session = loadSession()
   const playerId = session?.playerId
+
+  useEffect(() => {
+    if (!roomId || room) return
+    let mounted = true
+    async function loadRoom() {
+      if (!roomId) return
+      try {
+        const actualRoomId = await api.resolveRoomId(roomId)
+        if (!mounted) return
+        const res = await api.getRoom(actualRoomId)
+        if (!mounted) return
+        const mappedRoom: Room = {
+          id: res.room.id,
+          name: res.room.name,
+          visibility: res.room.visibility,
+          roomCode: res.room.roomCode,
+          hostId: res.room.hostId,
+          topics: res.room.topics,
+          intensity: res.room.intensity as any,
+          allowSkipping: res.room.allowSkipping,
+          skipsPerPlayer: res.room.skipsPerPlayer,
+          status: res.room.status as any,
+          createdAt: typeof res.room.createdAt?.toMillis === 'function' ? res.room.createdAt.toMillis() : Date.now(),
+          lastActivity: Date.now(),
+        }
+        const mappedPlayers: Player[] = res.players.map((p) => ({
+          id: p.id,
+          nickname: p.nickname,
+          avatarId: p.avatarId,
+          isHost: p.isHost,
+          skipCount: p.skipCount,
+          joinedAt: typeof p.joinedAt?.toMillis === 'function' ? p.joinedAt.toMillis() : Date.now(),
+        }))
+        setRoom(mappedRoom)
+        setPlayers(mappedPlayers)
+      } catch {
+        if (mounted) {
+          navigate(`/room/${roomId}`, { replace: true })
+        }
+      }
+    }
+    loadRoom()
+    return () => { mounted = false }
+  }, [roomId, room, setRoom, setPlayers, navigate])
 
   const [phase, setPhase] = useState<TurnPhase>('choice')
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null)

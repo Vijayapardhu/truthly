@@ -6,6 +6,7 @@ import Avatar from '../components/avatars/Avatar'
 import { cn } from '../lib/utils'
 import { useIdentityStore } from '../stores/identity-store'
 import { api } from '../lib/api'
+import { getOrCreateAnonymousUserId } from '../services/auth'
 import { CheckmarkRegular } from '@fluentui/react-icons'
 
 const avatarOptions = ['Cat', 'Panda', 'Tiger', 'Pig', 'Monkey', 'Bear', 'Wolf', 'Octopus']
@@ -46,12 +47,13 @@ export default function IdentitySetup() {
     setError('')
     setIsLoading(true)
     try {
+      const uid = await getOrCreateAnonymousUserId()
       const res = await api.joinRoom(effectiveRoomId, {
         nickname: nickname.trim(),
         avatarId,
       })
       setIdentity({ nickname: nickname.trim(), avatarId })
-      const session = { playerId: res.player.id, nickname: nickname.trim(), avatarId, roomCode: effectiveRoomCode || effectiveRoomId }
+      const session = { playerId: res.player.id, nickname: nickname.trim(), avatarId, roomCode: effectiveRoomCode || effectiveRoomId, uid }
       localStorage.setItem(SESSION_KEY, JSON.stringify(session))
       navigate(`/room/${effectiveRoomCode || effectiveRoomId}`, {
         state: session,

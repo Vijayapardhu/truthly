@@ -1,11 +1,58 @@
 import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import Button from '../components/ui/Button'
 import { useRoomStore } from '../stores/room-store'
+import { api } from '../lib/api'
+import type { Room } from '../types'
 
 export default function PrivateRoomShare() {
   const { roomId } = useParams()
   const navigate = useNavigate()
   const room = useRoomStore((s) => s.room)
+  const setRoom = useRoomStore((s) => s.setRoom)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!roomId || room) {
+      setLoading(false)
+      return
+    }
+    let mounted = true
+    async function loadRoom() {
+      if (!roomId) return
+      try {
+        const actualRoomId = await api.resolveRoomId(roomId)
+        if (!mounted) return
+        const res = await api.getRoom(actualRoomId)
+        if (!mounted) return
+        const mappedRoom: Room = {
+          id: res.room.id,
+          name: res.room.name,
+          visibility: res.room.visibility,
+          roomCode: res.room.roomCode,
+          hostId: res.room.hostId,
+          topics: res.room.topics,
+          intensity: res.room.intensity as any,
+          allowSkipping: res.room.allowSkipping,
+          skipsPerPlayer: res.room.skipsPerPlayer,
+          status: res.room.status as any,
+          createdAt: typeof res.room.createdAt?.toMillis === 'function' ? res.room.createdAt.toMillis() : Date.now(),
+          lastActivity: Date.now(),
+        }
+        setRoom(mappedRoom)
+      } catch {
+        if (mounted) {
+          navigate(`/room/${roomId}`, { replace: true })
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+    loadRoom()
+    return () => { mounted = false }
+  }, [roomId, room, setRoom, navigate])
 
   const inviteLink = typeof window !== 'undefined'
     ? `${window.location.origin}/room/${room?.roomCode || roomId}`
@@ -19,6 +66,14 @@ export default function PrivateRoomShare() {
 
   const copyLink = () => {
     navigator.clipboard.writeText(inviteLink)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-off-white flex items-center justify-center">
+        <div className="text-sm text-text-secondary">Loading...</div>
+      </div>
+    )
   }
 
   return (

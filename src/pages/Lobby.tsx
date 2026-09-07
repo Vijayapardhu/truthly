@@ -139,6 +139,10 @@ export default function Lobby() {
 
   useEffect(() => {
     if (!identity && resolvedRoomId && !loading && room) {
+      const session = loadSession()
+      if (session?.nickname && session?.avatarId) {
+        return
+      }
       navigate(`/identity`, {
         replace: true,
         state: { roomId: resolvedRoomId, roomCode: room.roomCode }
