@@ -194,6 +194,25 @@ export default function Lobby() {
     }
   }
 
+  const handleEndGame = async () => {
+    if (!resolvedRoomId || !playerId || !room) return
+    try {
+      const game = await api.getRoom(resolvedRoomId)
+      const turnCount = game.players.length * 3
+      await api.saveGameResult({
+        roomId: resolvedRoomId,
+        roomName: room.name,
+        playerId,
+        playerName: identity?.nickname || 'Host',
+        turnCount,
+      })
+      await api.startGame(resolvedRoomId, playerId)
+      navigate(`/room/${roomId}/game`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to end game')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-off-white flex items-center justify-center">
@@ -273,14 +292,24 @@ export default function Lobby() {
           </div>
 
           {isHost && (
-            <Button
-              size="lg"
-              className="w-full justify-center gap-2 shadow-lg shadow-truth/20"
-              onClick={handleStartGame}
-            >
-              Start Game
-              <ArrowRightRegular className="w-4 h-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="lg"
+                className="flex-1 justify-center gap-2 shadow-lg shadow-truth/20"
+                onClick={handleStartGame}
+              >
+                Start Game
+                <ArrowRightRegular className="w-4 h-4" />
+              </Button>
+              <Button
+                size="lg"
+                variant="danger"
+                className="flex-1"
+                onClick={handleEndGame}
+              >
+                End Game
+              </Button>
+            </div>
           )}
 
           {!notificationsEnabled && (
