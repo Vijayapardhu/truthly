@@ -151,6 +151,23 @@ export default function Landing() {
           </div>
         </section>
       </main>
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-off-white/90 backdrop-blur-md border-t border-border z-50">
+        <div className="flex items-center justify-around px-4 py-2">
+          <Link to="/create" className="flex flex-col items-center gap-0.5 text-truth">
+            <span className="text-lg font-bold">+</span>
+            <span className="text-[10px] font-medium">Create</span>
+          </Link>
+          <Link to="/join" className="flex flex-col items-center gap-0.5 text-text-secondary">
+            <span className="text-lg font-bold">→</span>
+            <span className="text-[10px] font-medium">Join</span>
+          </Link>
+          <Link to="/discover" className="flex flex-col items-center gap-0.5 text-text-secondary">
+            <span className="text-lg font-bold">◎</span>
+            <span className="text-[10px] font-medium">Rooms</span>
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

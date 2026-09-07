@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import CircularGame from '../components/game/CircularGame'
 import { useRoomStore } from '../stores/room-store'
 import { useIdentityStore } from '../stores/identity-store'
@@ -113,9 +113,50 @@ export default function Game() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
+  const [answerInput, setAnswerInput] = useState('')
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
   const [hapticsEnabled, setHapticsEnabled] = useState(true)
   const [chatVisible, setChatVisible] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [micSupported, setMicSupported] = useState(false)
+  const recognitionRef = useRef<any>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (SpeechRecognition) {
+        setMicSupported(true)
+      }
+    }
+  }, [])
+
+  const toggleMic = () => {
+    if (!micSupported) return
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+      return
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) return
+    const recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setChatInput((prev) => prev + (prev ? ' ' : '') + transcript)
+    }
+    recognition.onerror = () => {
+      setIsListening(false)
+    }
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+    recognitionRef.current = recognition
+    recognition.start()
+    setIsListening(true)
+  }
 
   const formatTime = (timestamp?: number) => {
     if (!timestamp) return ''
@@ -244,6 +285,7 @@ export default function Game() {
     playSelectSound()
     lightImpact()
     setPhase('completed')
+    setAnswerInput('')
   }
 
   const handleNext = async () => {
@@ -257,6 +299,15 @@ export default function Game() {
     if (socket.connected && playerId) {
       socket.emit('complete-turn', { roomId, playerId })
     }
+    if (answerInput.trim() && roomId && identity) {
+      await api.sendChatMessage(roomId, {
+        playerId: playerId || identity.nickname,
+        playerName: identity.nickname,
+        playerAvatarId: identity.avatarId,
+        text: answerInput.trim(),
+      })
+    }
+    setAnswerInput('')
   }
 
   const handlePlayAgain = async () => {
@@ -362,6 +413,14 @@ export default function Game() {
 
       <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-10">
         <div className={`w-full max-w-3xl space-y-6 transition-all ${chatVisible ? '' : 'max-w-2xl'}`}>
+          {!isMyTurn && phase === 'choice' && (
+            <div className="text-center py-3 px-4 bg-surface border border-border rounded-2xl">
+              <p className="text-sm text-text-secondary">
+                Waiting for <span className="font-semibold text-text-primary">{currentPlayer?.nickname || 'someone'}</span> to spin...
+              </p>
+            </div>
+          )}
+
           <CircularGame
             players={players}
             currentPlayerIndex={currentPlayerIndex}
@@ -385,12 +444,26 @@ export default function Game() {
                 "{currentQuestion}"
               </p>
               <div className="space-y-3">
-                <input
-                  placeholder="Type your answer..."
-                  className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-text-primary placeholder:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-truth"
-                />
+                <div className="flex gap-2">
+                  <input
+                    value={answerInput}
+                    onChange={(e) => setAnswerInput(e.target.value)}
+                    placeholder="Type your answer..."
+                    className="flex-1 h-12 px-4 rounded-xl border border-border bg-surface text-text-primary placeholder:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-truth"
+                  />
+                  {micSupported && phase === 'truth' && (
+                    <Button
+                      size="md"
+                      variant={isListening ? 'danger' : 'secondary'}
+                      onClick={toggleMic}
+                      className="shrink-0"
+                    >
+                      {isListening ? 'Listening...' : 'Mic'}
+                    </Button>
+                  )}
+                </div>
                 <div className="flex justify-center gap-2">
-                  <Button size="md" variant="secondary" onClick={handleSkip}>Skip · 2 remaining</Button>
+                  <Button size="md" variant="secondary" onClick={handleSkip}>Skip</Button>
                   <Button size="md" onClick={handleNext}>I'm Done</Button>
                 </div>
               </div>

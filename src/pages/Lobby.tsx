@@ -160,6 +160,7 @@ export default function Lobby() {
 
   const host = players.find((p) => p.isHost)
   const isHost = !!identity && !!host && playerId === host.id
+  const hostGone = !isHost && !players.some((p) => p.isHost)
   const topicLabels = room?.topics.map((t) => t.charAt(0).toUpperCase() + t.slice(1)) || []
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
@@ -261,6 +262,9 @@ export default function Lobby() {
               <PeopleRegular className="w-4 h-4" />
               <span className="text-sm">{players.length} player{players.length !== 1 ? 's' : ''}</span>
             </div>
+            <p className="text-xs font-mono text-text-secondary bg-surface border border-border inline-block px-3 py-1 rounded-lg">
+              Code: {room.roomCode}
+            </p>
           </div>
 
           {topicLabels.length > 0 && (
@@ -276,61 +280,77 @@ export default function Lobby() {
             </div>
           )}
 
-          <div className="bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden">
-            {players.map((player) => (
-              <div
-                key={player.id}
-                className="flex items-center gap-3 px-4 py-3"
-              >
-                <Avatar alt={player.nickname} avatarId={player.avatarId} size="sm" />
-                <span className="flex-1 text-sm font-medium text-text-primary">{player.nickname}</span>
-                {player.isHost && (
-                  <span className="text-[11px] font-semibold text-truth bg-truth-light px-2 py-0.5 rounded-full">HOST</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {isHost && (
-            <div className="flex gap-2">
-              <Button
-                size="lg"
-                className="flex-1 justify-center gap-2 shadow-lg shadow-truth/20"
-                onClick={handleStartGame}
-              >
-                Start Game
-                <ArrowRightRegular className="w-4 h-4" />
-              </Button>
-              <Button
-                size="lg"
-                variant="danger"
-                className="flex-1"
-                onClick={handleEndGame}
-              >
-                End Game
-              </Button>
+          {hostGone && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center space-y-3">
+              <p className="text-sm font-semibold text-red-600">The host has left the room.</p>
+              <p className="text-xs text-red-500">This room is no longer active.</p>
+              <Button size="md" variant="secondary" onClick={() => navigate('/')}>Back to Home</Button>
             </div>
           )}
 
-          {!notificationsEnabled && (
-            <Button size="md" variant="secondary" className="w-full" onClick={handleRequestNotifications}>
-              Enable notifications
-            </Button>
-          )}
-
-          {!isHost && (
-            <div className="flex flex-col items-center gap-4">
-              <img
-                src="/waiting.gif"
-                alt="Waiting for host"
-                className="max-h-[160px] w-auto"
-              />
-              <div className="text-center">
-                <p className="text-sm font-semibold text-text-primary">{room.name}</p>
-                <p className="text-xs text-text-secondary font-mono">{room.roomCode}</p>
+          {!hostGone && (
+            <>
+              <div className="bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden">
+                {players.map((player) => (
+                  <div
+                    key={player.id}
+                    className="flex items-center gap-3 px-4 py-3"
+                  >
+                    <Avatar alt={player.nickname} avatarId={player.avatarId} size="sm" />
+                    <span className="flex-1 text-sm font-medium text-text-primary">{player.nickname}</span>
+                    {player.isHost && (
+                      <span className="text-[11px] font-semibold text-truth bg-truth-light px-2 py-0.5 rounded-full">HOST</span>
+                    )}
+                  </div>
+                ))}
               </div>
-              <p className="text-sm text-text-secondary">Waiting for the host to start...</p>
-            </div>
+
+              {isHost && (
+                <div className="flex gap-2">
+                  <Button
+                    size="lg"
+                    className="flex-1 justify-center gap-2 shadow-lg shadow-truth/20"
+                    onClick={handleStartGame}
+                  >
+                    Start Game
+                    <ArrowRightRegular className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="danger"
+                    className="flex-1"
+                    onClick={handleEndGame}
+                  >
+                    End Game
+                  </Button>
+                </div>
+              )}
+
+              {!isHost && (
+                <div className="flex flex-col items-center gap-4">
+                  <img
+                    src="/waiting.gif"
+                    alt="Waiting for host"
+                    className="max-h-[160px] w-auto"
+                  />
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-text-primary">Waiting for the host to start...</p>
+                    <p className="text-xs text-text-secondary mt-1">Share the room code with friends</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="secondary" onClick={copyCode}>Copy Code</Button>
+                    <Button size="sm" variant="secondary" onClick={shareLink}>Copy Link</Button>
+                    <Button size="sm" variant="ghost" onClick={() => navigate('/')}>Leave</Button>
+                  </div>
+                </div>
+              )}
+
+              {!notificationsEnabled && (
+                <Button size="md" variant="secondary" className="w-full" onClick={handleRequestNotifications}>
+                  Enable notifications
+                </Button>
+              )}
+            </>
           )}
         </div>
       </main>

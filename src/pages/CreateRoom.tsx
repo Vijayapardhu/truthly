@@ -276,7 +276,7 @@ export default function CreateRoom() {
             onClick={handleCreate}
             disabled={!name.trim() || selectedTopics.length === 0 || isLoading}
           >
-            {isLoading ? 'Creating...' : 'Create Room →'}
+            {isLoading ? 'Creating...' : 'Continue →'}
           </Button>
         </div>
       </div>
