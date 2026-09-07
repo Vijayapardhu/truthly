@@ -37,8 +37,6 @@ export default function Lobby() {
   const setPlayers = useRoomStore((s) => s.setPlayers)
   const identity = useIdentityStore((s) => s.identity)
 
-  const [localRoom, setLocalRoom] = useState<Room | null>(room)
-  const [localPlayers, setLocalPlayers] = useState<Player[]>(players)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [resolvedRoomId, setResolvedRoomId] = useState<string | null>(null)
@@ -86,8 +84,6 @@ export default function Lobby() {
         }))
         setRoom(mappedRoom)
         setPlayers(mappedPlayers)
-        setLocalRoom(mappedRoom)
-        setLocalPlayers(mappedPlayers)
         saveSession({ roomCode: mappedRoom.roomCode, playerId, nickname: identity?.nickname, avatarId: identity?.avatarId })
       } catch (err) {
         if (mounted) {
@@ -106,12 +102,10 @@ export default function Lobby() {
     socket.emit('join-room', { roomId, playerId })
 
     const handlePlayerJoined = (data: { playerId: string; players: Player[] }) => {
-      setLocalPlayers(data.players)
       setPlayers(data.players)
     }
 
     const handlePlayerLeft = (data: { playerId: string; players: Player[] }) => {
-      setLocalPlayers(data.players)
       setPlayers(data.players)
     }
 
@@ -141,34 +135,34 @@ export default function Lobby() {
       socket.off('game-state', handleGameState)
       disconnectSocket()
     }
-  }, [roomId, playerId, setRoom, setPlayers, navigate])
+  }, [roomId, playerId, setRoom, setPlayers, navigate, identity])
 
   useEffect(() => {
-    if (!identity && resolvedRoomId && !loading) {
+    if (!identity && resolvedRoomId && !loading && room) {
       navigate(`/identity`, {
         replace: true,
-        state: { roomId: resolvedRoomId, roomCode: localRoom?.roomCode }
+        state: { roomId: resolvedRoomId, roomCode: room.roomCode }
       })
     }
-  }, [identity, resolvedRoomId, loading, navigate, localRoom])
+  }, [identity, resolvedRoomId, loading, navigate, room])
 
   useEffect(() => {
     const saved = loadSession()
-    if (saved?.roomCode && !roomId && !resolvedRoomId && !localRoom) {
+    if (saved?.roomCode && !roomId && !resolvedRoomId && !room) {
       navigate(`/room/${saved.roomCode}`, { state: saved, replace: true })
     }
-  }, [roomId, resolvedRoomId, localRoom, navigate])
+  }, [roomId, resolvedRoomId, room, navigate])
 
-  const host = localPlayers.find((p) => p.isHost)
+  const host = players.find((p) => p.isHost)
   const isHost = !!identity && !!host && playerId === host.id
-  const topicLabels = localRoom?.topics.map((t) => t.charAt(0).toUpperCase() + t.slice(1)) || []
+  const topicLabels = room?.topics.map((t) => t.charAt(0).toUpperCase() + t.slice(1)) || []
 
   const copyCode = () => {
-    if (localRoom?.roomCode) navigator.clipboard.writeText(localRoom.roomCode)
+    if (room?.roomCode) navigator.clipboard.writeText(room.roomCode)
   }
 
   const shareLink = () => {
-    const link = typeof window !== 'undefined' ? `${window.location.origin}/room/${localRoom?.roomCode || roomId}` : `/room/${localRoom?.roomCode || roomId}`
+    const link = typeof window !== 'undefined' ? `${window.location.origin}/room/${room?.roomCode || roomId}` : `/room/${room?.roomCode || roomId}`
     navigator.clipboard.writeText(link)
   }
 
@@ -190,7 +184,7 @@ export default function Lobby() {
     )
   }
 
-  if (error || !localRoom) {
+  if (error || !room) {
     return (
       <div className="min-h-screen bg-off-white flex flex-col items-center justify-center gap-4 px-4">
         <p className="text-sm text-red-600">{error || 'Room not found'}</p>
@@ -222,10 +216,10 @@ export default function Lobby() {
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         <div className="w-full max-w-lg space-y-6">
           <div className="text-center space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-primary">{localRoom.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-primary">{room.name}</h1>
             <div className="flex items-center justify-center gap-2 text-text-secondary">
               <PeopleRegular className="w-4 h-4" />
-              <span className="text-sm">{localPlayers.length} player{localPlayers.length !== 1 ? 's' : ''}</span>
+              <span className="text-sm">{players.length} player{players.length !== 1 ? 's' : ''}</span>
             </div>
           </div>
 
@@ -243,7 +237,7 @@ export default function Lobby() {
           )}
 
           <div className="bg-surface border border-border rounded-2xl divide-y divide-border overflow-hidden">
-            {localPlayers.map((player) => (
+            {players.map((player) => (
               <div
                 key={player.id}
                 className="flex items-center gap-3 px-4 py-3"
@@ -276,8 +270,8 @@ export default function Lobby() {
                 className="max-h-[160px] w-auto"
               />
               <div className="text-center">
-                <p className="text-sm font-semibold text-text-primary">{localRoom.name}</p>
-                <p className="text-xs text-text-secondary font-mono">{localRoom.roomCode}</p>
+                <p className="text-sm font-semibold text-text-primary">{room.name}</p>
+                <p className="text-xs text-text-secondary font-mono">{room.roomCode}</p>
               </div>
               <p className="text-sm text-text-secondary">Waiting for the host to start...</p>
             </div>

@@ -11,6 +11,18 @@ import { CheckmarkRegular } from '@fluentui/react-icons'
 
 const avatarOptions = ['Cat', 'Panda', 'Tiger', 'Pig', 'Monkey', 'Bear', 'Wolf', 'Octopus']
 
+const SESSION_KEY = 'truthly-session'
+
+function loadSession() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export default function HostIdentitySetup() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -21,13 +33,16 @@ export default function HostIdentitySetup() {
   const roomState = location.state as { roomCode?: string; roomId?: string } | null
   const roomCode = roomState?.roomCode
 
+  const session = loadSession()
+  const effectiveRoomCode = roomCode || session?.roomCode
+
   const handleContinue = async () => {
-    if (!nickname.trim() || !roomCode) return
+    if (!nickname.trim() || !effectiveRoomCode) return
     const hostId = await getOrCreateAnonymousUserId()
     setIdentity({ nickname: nickname.trim(), avatarId })
-    const session = { playerId: hostId, nickname: nickname.trim(), avatarId, roomCode }
-    localStorage.setItem('truthly-session', JSON.stringify(session))
-    navigate(`/room/${roomCode}`, {
+    const session = { playerId: hostId, nickname: nickname.trim(), avatarId, roomCode: effectiveRoomCode }
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+    navigate(`/room/${effectiveRoomCode}`, {
       state: session,
     })
   }

@@ -10,6 +10,18 @@ import { CheckmarkRegular } from '@fluentui/react-icons'
 
 const avatarOptions = ['Cat', 'Panda', 'Tiger', 'Pig', 'Monkey', 'Bear', 'Wolf', 'Octopus']
 
+const SESSION_KEY = 'truthly-session'
+
+function loadSession() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export default function IdentitySetup() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -19,23 +31,29 @@ export default function IdentitySetup() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const roomState = location.state as { roomId?: string; roomCode?: string } | null
-  const roomId = roomState?.roomId
-  const roomCode = roomState?.roomCode
+  const navState = location.state as { roomId?: string; roomCode?: string } | null
+  const roomId = navState?.roomId
+  const roomCode = navState?.roomCode
+
+  const session = loadSession()
+  const fallbackRoomId = session?.roomId
+  const fallbackRoomCode = session?.roomCode
+  const effectiveRoomId = roomId || fallbackRoomId
+  const effectiveRoomCode = roomCode || fallbackRoomCode
 
   const handleContinue = async () => {
-    if (!nickname.trim() || !roomId || isLoading) return
+    if (!nickname.trim() || !effectiveRoomId || isLoading) return
     setError('')
     setIsLoading(true)
     try {
-      const res = await api.joinRoom(roomId, {
+      const res = await api.joinRoom(effectiveRoomId, {
         nickname: nickname.trim(),
         avatarId,
       })
       setIdentity({ nickname: nickname.trim(), avatarId })
-      const session = { playerId: res.player.id, nickname: nickname.trim(), avatarId, roomCode: roomCode || roomId }
-      localStorage.setItem('truthly-session', JSON.stringify(session))
-      navigate(`/room/${roomCode || roomId}`, {
+      const session = { playerId: res.player.id, nickname: nickname.trim(), avatarId, roomCode: effectiveRoomCode || effectiveRoomId }
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+      navigate(`/room/${effectiveRoomCode || effectiveRoomId}`, {
         state: session,
       })
     } catch (err) {

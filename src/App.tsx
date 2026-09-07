@@ -9,20 +9,24 @@ import Game from './pages/Game'
 import Discover from './pages/Discover'
 import PrivateRoomShare from './pages/PrivateRoomShare'
 import NotFound from './pages/NotFound'
+import SessionHydrator from './components/SessionHydrator'
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/create" element={<CreateRoom />} />
-      <Route path="/join" element={<JoinRoom />} />
-      <Route path="/identity" element={<IdentitySetup />} />
-      <Route path="/host-identity" element={<HostIdentitySetup />} />
-      <Route path="/discover" element={<Discover />} />
-      <Route path="/room/:roomId" element={<Lobby />} />
-      <Route path="/room/:roomId/game" element={<Game />} />
-      <Route path="/room/:roomId/private" element={<PrivateRoomShare />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <SessionHydrator />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/create" element={<CreateRoom />} />
+        <Route path="/join" element={<JoinRoom />} />
+        <Route path="/identity" element={<IdentitySetup />} />
+        <Route path="/host-identity" element={<HostIdentitySetup />} />
+        <Route path="/discover" element={<Discover />} />
+        <Route path="/room/:roomId" element={<Lobby />} />
+        <Route path="/room/:roomId/game" element={<Game />} />
+        <Route path="/room/:roomId/private" element={<PrivateRoomShare />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   )
 }

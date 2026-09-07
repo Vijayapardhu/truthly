@@ -3,7 +3,7 @@
 ## Frontend
 - **Framework**: React + TypeScript + Vite + Tailwind CSS v4
 - **Design**:
-  - Fonts: Matcha Mint, Chillin on Sunday, Internet Friends
+  - Fonts: Inter, Plus Jakarta Sans, Dancing Script
   - Custom SVG logo
   - Design tokens and global styles in `src/styles/globals.css`
   - Responsive utilities, hidden scrollbars, Fluent UI icons
@@ -20,129 +20,81 @@
   - 404 Not Found
 - **Shared UI components**:
   - Button, Input, Chip, Toggle, Modal, Drawer
-  - IconButton, Avatar, OTPInput
+  - IconButton, Avatar, OTPInput, Emoji, SessionHydrator
 - **State**:
   - Zustand store: `src/stores/room-store.ts`
+  - Zustand store: `src/stores/identity-store.ts`
 - **Routing**:
-  - React Router in `src/App.tsx` with `ProtectedRoute`
+  - React Router in `src/App.tsx`
+  - Session hydration on app load
 - **Build status**:
   - `npm run build` passes
   - Dev server: `http://localhost:5174`
 - **Git**:
-  - Initialized and pushed 59 files to `https://github.com/Vijayapardhu/truthly.git` on branch `main`
+  - Pushed to `https://github.com/Vijayapardhu/truthly.git` on branch `main`
 
 ## Backend
-- **Framework**: Node.js + Express + Socket.io + TypeScript (ESM)
-- **Project structure**:
-  - `server/package.json`
-  - `server/tsconfig.json`
-  - `server/src/index.ts`
-  - `server/src/routes/rooms.ts`
-  - `server/src/routes/chat.ts`
-  - `server/src/socket/handlers.ts`
-  - `server/src/services/ai.ts`
-  - `server/src/models/store.ts`
-  - `server/src/types/index.ts`
-  - `server/src/utils/helpers.ts`
-- **In-memory data layer**:
-  - `RoomStore` with room CRUD
-  - Player management
-  - Game state management
-  - Question bank
-  - Chat messages
-  - Active room listing
-- **Build status**:
-  - TypeScript build passes
-  - Server runs on port 3001
-- **Socket.io events implemented**:
-  - `join-room`, `leave-room`, `chat-message`
-  - `select-truth`, `select-dare`, `complete-turn`
-  - `game-state`, `game-state-updated`, `player-joined`, `player-left`, `new-chat-message`
-- **AI service**:
-  - Stub with fallback question banks
-  - Optional OpenAI integration via env vars
+- **Service**: Firebase (Firestore + Anonymous Auth)
+- **Data layer**:
+  - `src/services/firestore.ts` — Firestore CRUD + realtime subscriptions
+  - `src/services/auth.ts` — Anonymous Firebase Auth with local fallback
+  - `src/services/questions.ts` — Intensity-aware question pools
+- **Firestore collections**:
+  - `rooms/{roomCode}` — Room metadata
+  - `rooms/{roomCode}/players/{playerId}` — Player documents
+  - `rooms/{roomCode}/game/current` — Game state document
+  - `rooms/{roomCode}/chat/{messageId}` — Chat messages
+- **Realtime subscriptions**:
+  - Players list updates via `onSnapshot`
+  - Game state updates via `onSnapshot`
+  - Chat messages via `onSnapshot`
+- **Security**:
+  - `firestore.rules` — Authenticated writes, public reads
+- **Compatibility layer**:
+  - `src/lib/socket.ts` — Emulates Socket.io events using Firestore listeners
 
 ## Frontend-Backend Integration
-- Created `src/lib/api.ts` for REST API calls
-- Created `src/lib/socket.ts` for Socket.io client
-- Updated `CreateRoom` to POST to `/api/rooms/create`
-- Updated `JoinRoom` to validate room code via `/api/rooms/code/:roomCode`
-- Updated `IdentitySetup` to POST to `/api/rooms/:roomId/join`
-- Updated `HostIdentitySetup` to pass `roomId` and `hostId`
-- Updated `Lobby` to:
-  - Fetch room data via API
-  - Connect to Socket.io for real-time player updates
-  - Start game via `/api/rooms/:roomId/start`
-- Updated `Game` to:
-  - Use Socket.io for game state updates
-  - Emit `select-truth`, `select-dare`, `complete-turn` events
-  - Navigate back to lobby on leave
-- Both servers run concurrently:
-  - Backend: `http://localhost:3001`
-  - Frontend: `http://localhost:5174`
+- `src/lib/api.ts` wraps Firestore service calls
+- `src/lib/socket.ts` provides Socket.io-compatible interface
+- `src/lib/firebase.ts` — Firebase app initialization
+- All pages use Firebase for data and realtime updates
 
-## Game Experience Enhancements
-- Added circular "spin the bottle" game board (`src/components/game/CircularGame.tsx`)
-- Players arranged in a circle around a central bottle
-- Bottle spins with realistic deceleration and stops at a random player
-- Selected player gets highlighted with "your turn" indicator
-- Added sound effects using Web Audio API (`src/lib/sound.ts`):
-  - Spin sound (ascending tones)
-  - Selection sound (chime)
-  - Win/completion sound (celebration)
-  - Click sound
-- Added haptic feedback using Vibration API (`src/lib/haptic.ts`):
-  - Light/medium/heavy impacts
-  - Success/warning patterns
-- Integrated sounds and haptics into game interactions:
-  - Spin triggers spin sound + heavy impact
-  - Truth/Dare selection triggers select sound + medium impact
-  - Skip triggers select sound + light impact
-  - Next turn triggers win sound + success impact pattern
-- Added Apple Color Emoji font preference in global CSS
-- Created `Emoji` component for consistent emoji rendering
-- Replaced emoji text in Game page with Emoji component
-- Removed emoji fallbacks from Avatar component (uses icons8 images instead)
+## Game Experience
+- Circular "spin the bottle" game board (`src/components/game/CircularGame.tsx`)
+- Sound effects using Web Audio API (`src/lib/sound.ts`)
+- Haptic feedback using Vibration API (`src/lib/haptic.ts`)
+- Realtime chat in Game page
+- Session persistence in `localStorage`
 
-## Known Issues / Blockers
-- `better-sqlite3` cannot be installed on Node 25.8.1 win32 due to missing native build tools; dependency was removed.
-- Backend is entirely in-memory; data is lost on server restart.
+## Mobile Optimization
+- Responsive Tailwind utilities throughout
+- `touch-manipulation` on buttons for touch devices
+- Viewport meta tag configured
+- OTP input with mobile-friendly sizing
+- Circular game radius adapts to screen width
 
-## Room Link & Access Fixes
-- Room URLs now use short room codes instead of internal IDs
-- Direct links like `/room/ABC123` work without asking for code again
-- Removed `ProtectedRoute` wrapper from room routes; identity checks are handled per page
-- `Lobby` redirects unauthenticated users to `IdentitySetup` with room context preserved
-- Added `api.resolveRoomId` to look up rooms by code first, then fallback to ID
-- Updated `JoinRoom`, `IdentitySetup`, `HostIdentitySetup`, `PrivateRoomShare`, and `Discover` to use room codes for navigation and links
-- Fixed host start button by changing host detection from nickname match to `playerId === host.id`
+## Deployment
+- `vercel.json` configured for SPA routing
+- Firebase config in `src/lib/firebase.ts`
+- Build output in `dist/`
 
-## Firebase Migration
-- Installed Firebase SDK
-- Created `src/lib/firebase.ts` with Firebase app initialization
-- Created `src/services/firestore.ts` with Firestore data layer:
-  - Room, player, game, and chat message types
-  - CRUD operations for rooms and players
-  - Realtime subscriptions for players, game state, and chat
-  - Transaction-based turn advancement
-- Replaced `src/lib/api.ts` with Firebase-based service calls
-- Replaced `src/lib/socket.ts` with Firestore-backed realtime event system
-- Updated `Lobby.tsx` and `Game.tsx` to use Firebase subscriptions
-- Added `firestore.rules` for development (open read/write)
-- Removed Socket.io dependency from frontend
-
-## Frontend Fixes
-- Fixed lobby/game reset on player join by removing `resetRoom()` from cleanup
-- Added `localStorage` session persistence for room code and player identity
-- Room URLs now use short room codes
-- Host start button fixed by comparing `playerId` with host ID
-- Added session rehydration on page refresh
+## Completed Steps
+1. ✅ Migrated from Express/Socket.io to Firebase/Firestore
+2. ✅ Added Firebase Anonymous Auth
+3. ✅ Implemented Discover page with live Firestore data
+4. ✅ Added chat UI to Game page
+5. ✅ Integrated AI question generation (intensity-aware pools)
+6. ✅ Added session hydration and localStorage persistence
+7. ✅ Fixed lobby/game reset on player join
+8. ✅ Added production Firestore security rules
+9. ✅ Added mobile optimizations
+10. ✅ Added Vercel SPA routing config
 
 ## Next Steps
-1. Set up proper Firebase security rules for production
-2. Add Firebase Authentication for persistent user accounts
-3. Implement Discover page with real Firestore data
-4. Add chat UI to Game page
-5. Integrate AI question generation
-6. Mobile optimization and testing
-7. Deploy to Vercel with Firebase hosting
+1. Add Firebase Authentication for persistent user accounts (Google, Apple, etc.)
+2. Implement AI question generation via OpenAI/LLM API
+3. Add reactions and timestamps to chat UI
+4. Add room categories and search to Discover page
+5. Implement game statistics and history
+6. Add push notifications for room invites
+7. Deploy to Vercel and configure Firebase hosting

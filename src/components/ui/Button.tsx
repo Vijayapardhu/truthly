@@ -11,7 +11,7 @@ export default function Button({
   size = 'md',
   ...props
 }: ButtonProps) {
-  const base = 'inline-flex items-center justify-center gap-2 font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-truth focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none'
+  const base = 'inline-flex items-center justify-center gap-2 font-medium transition-all touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-truth focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none'
   const variants = {
     primary: 'bg-truth text-white hover:shadow-lg hover:shadow-truth/20 hover:translate-y-[-1px]',
     secondary: 'bg-surface border border-border text-text-primary hover:bg-off-white hover:border-text-secondary/40',
