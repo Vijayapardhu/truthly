@@ -115,6 +115,7 @@ export default function Game() {
   const [chatInput, setChatInput] = useState('')
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
   const [hapticsEnabled, setHapticsEnabled] = useState(true)
+  const [chatVisible, setChatVisible] = useState(false)
 
   const formatTime = (timestamp?: number) => {
     if (!timestamp) return ''
@@ -348,6 +349,9 @@ export default function Game() {
             <Button size="sm" variant="ghost" onClick={() => setHapticsEnabled((v) => !v)} className="gap-1">
               {hapticsEnabled ? 'Haptics: On' : 'Haptics: Off'}
             </Button>
+            <Button size="sm" variant="ghost" onClick={() => setChatVisible((v) => !v)}>
+              {chatVisible ? 'Hide Chat' : 'Chat'}
+            </Button>
             <Button size="sm" variant="ghost" onClick={handleLeave} className="gap-2">
               <ArrowRightRegular className="w-4 h-4" />
               <span className="hidden sm:inline">Leave</span>
@@ -357,7 +361,7 @@ export default function Game() {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-10">
-        <div className="w-full max-w-3xl space-y-6">
+        <div className={`w-full max-w-3xl space-y-6 transition-all ${chatVisible ? '' : 'max-w-2xl'}`}>
           <CircularGame
             players={players}
             currentPlayerIndex={currentPlayerIndex}
@@ -370,7 +374,7 @@ export default function Game() {
             hapticsEnabled={hapticsEnabled}
           />
 
-          {(phase === 'truth' || phase === 'dare') && currentQuestion && (
+          {isMyTurn && (phase === 'truth' || phase === 'dare') && currentQuestion && (
             <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-5">
               <div className="flex items-center justify-center">
                 <span className="px-4 py-1.5 rounded-full text-sm font-semibold bg-truth-light text-truth">
@@ -439,63 +443,65 @@ export default function Game() {
             </div>
           )}
 
-          <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
-            <p className="text-sm font-semibold text-text-primary">Room chat</p>
-            <div className="h-40 overflow-y-auto space-y-3 pr-1">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="flex items-start gap-3 group"
-                  onMouseEnter={() => setHoveredMessageId(msg.id)}
-                  onMouseLeave={() => setHoveredMessageId(null)}
-                >
-                  <Avatar alt={msg.playerName} avatarId={msg.playerAvatarId} size="sm" />
-                  <div className="flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-sm font-semibold text-text-primary">{msg.playerName}</p>
-                      <span className="text-[10px] text-text-secondary">{formatTime(msg.createdAt)}</span>
+          {chatVisible && (
+            <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+              <p className="text-sm font-semibold text-text-primary">Room chat</p>
+              <div className="h-40 overflow-y-auto space-y-3 pr-1">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className="flex items-start gap-3 group"
+                    onMouseEnter={() => setHoveredMessageId(msg.id)}
+                    onMouseLeave={() => setHoveredMessageId(null)}
+                  >
+                    <Avatar alt={msg.playerName} avatarId={msg.playerAvatarId} size="sm" />
+                    <div className="flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-sm font-semibold text-text-primary">{msg.playerName}</p>
+                        <span className="text-[10px] text-text-secondary">{formatTime(msg.createdAt)}</span>
+                      </div>
+                      <p className="text-sm text-text-secondary break-words">{msg.text}</p>
+                      {Object.keys(msg.reactions).length > 0 && (
+                        <div className="flex gap-1 mt-1">
+                          {Object.entries(msg.reactions).map(([emoji, users]) => (
+                            <span key={emoji} className="text-xs bg-surface border border-border rounded-full px-1.5 py-0.5">
+                              {emoji} {users.length}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {hoveredMessageId === msg.id && (
+                        <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {['😂', '❤️', '🔥', '👏'].map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => handleReact(msg.id, emoji)}
+                              className="text-xs bg-surface border border-border rounded-full px-1.5 py-0.5 hover:border-lavender transition-colors"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm text-text-secondary break-words">{msg.text}</p>
-                    {Object.keys(msg.reactions).length > 0 && (
-                      <div className="flex gap-1 mt-1">
-                        {Object.entries(msg.reactions).map(([emoji, users]) => (
-                          <span key={emoji} className="text-xs bg-surface border border-border rounded-full px-1.5 py-0.5">
-                            {emoji} {users.length}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {hoveredMessageId === msg.id && (
-                      <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {['😂', '❤️', '🔥', '👏'].map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            onClick={() => handleReact(msg.id, emoji)}
-                            className="text-xs bg-surface border border-border rounded-full px-1.5 py-0.5 hover:border-lavender transition-colors"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                  placeholder="Type a message..."
+                  className="flex-1 h-11 px-4 rounded-xl border border-border bg-surface text-text-primary placeholder:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-truth"
+                />
+                <Button size="md" onClick={handleSendChat} disabled={!chatInput.trim()}>
+                  Send
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                placeholder="Type a message..."
-                className="flex-1 h-11 px-4 rounded-xl border border-border bg-surface text-text-primary placeholder:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-truth"
-              />
-              <Button size="md" onClick={handleSendChat} disabled={!chatInput.trim()}>
-                Send
-              </Button>
-            </div>
-          </div>
+          )}
         </div>
       </main>
     </div>

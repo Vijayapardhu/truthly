@@ -35,19 +35,19 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
   const remoteSpinRef = useRef<{ playerId: string; targetRotation: number } | null>(null)
 
   const size = useMemo(() => {
-    if (typeof window === 'undefined') return 440
+    if (typeof window === 'undefined') return 460
     const vw = window.innerWidth
-    if (vw < 360) return 340
-    if (vw < 480) return 380
-    return 440
+    if (vw < 360) return 360
+    if (vw < 480) return 400
+    return 460
   }, [])
 
   const center = size / 2
-  const tableRadius = size / 2 - 24
-  const bottleSize = Math.max(72, size * 0.22)
+  const tableRadius = size / 2 - 20
+  const bottleSize = Math.max(80, size * 0.24)
 
   const radius = useMemo(() => {
-    return tableRadius - bottleSize / 2 - 24
+    return tableRadius - bottleSize / 2 - 32
   }, [tableRadius, bottleSize])
 
   const positions = useMemo(() => {
@@ -108,7 +108,7 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
         // ignore
       }
     }
-  }, [spinning, players, currentRotation, controls, onSpinEnd, triggerHaptic])
+  }, [spinning, players, currentRotation, controls, onSpinEnd, triggerHaptic, roomId])
 
   useEffect(() => {
     if (!game) return
@@ -158,15 +158,19 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
   const selectedAngle = selectedIndex >= 0 ? positions[selectedIndex].angle : null
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full" style={{ height: size + 140 }}>
+    <div className="relative flex flex-col items-center justify-center w-full" style={{ height: size + 160 }}>
       <div className="relative" style={{ width: size, height: size }}>
-        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-surface to-off-white border border-border shadow-xl shadow-truth/5" />
+        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-surface via-off-white to-surface border-2 border-border shadow-2xl shadow-truth/10" />
 
-        <div className="absolute inset-4 rounded-full border border-border/60" />
+        <div className="absolute inset-6 rounded-full border border-border/40" />
+
+        <div className="absolute inset-0 rounded-full" style={{
+          background: 'radial-gradient(circle at 50% 30%, rgba(236,72,153,0.04) 0%, transparent 60%)'
+        }} />
 
         <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
           {positions.map((pos, i) => {
-            const start = polarToCartesian(center, center, 36, pos.angle)
+            const start = polarToCartesian(center, center, 38, pos.angle)
             const end = polarToCartesian(center, center, radius, pos.angle)
             const isSelected = selectedPlayerId === players[i]?.id
             return (
@@ -177,8 +181,8 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
                 x2={end.x}
                 y2={end.y}
                 stroke={isSelected ? '#ec4899' : '#e5e7eb'}
-                strokeWidth={isSelected ? 3 : 1.5}
-                strokeDasharray={isSelected ? '0' : '4 4'}
+                strokeWidth={isSelected ? 2.5 : 1.5}
+                strokeDasharray={isSelected ? '0' : '3 4'}
                 className={cn('transition-all duration-500', isSelected && 'drop-shadow-sm')}
               />
             )
@@ -188,8 +192,8 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
         {selectedPlayerId && selectedAngle !== null && (
           <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
             {(() => {
-              const start = polarToCartesian(center, center, 36, selectedAngle)
-              const end = polarToCartesian(center, center, radius + 28, selectedAngle)
+              const start = polarToCartesian(center, center, 38, selectedAngle)
+              const end = polarToCartesian(center, center, radius + 24, selectedAngle)
               return (
                 <line
                   x1={start.x}
@@ -197,7 +201,7 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
                   x2={end.x}
                   y2={end.y}
                   stroke="#ec4899"
-                  strokeWidth={3.5}
+                  strokeWidth={3}
                   strokeLinecap="round"
                   className="animate-pulse"
                 />
@@ -214,7 +218,7 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
               style={{ rotate: currentRotation }}
             >
               <div className="relative">
-                <div className="absolute -inset-4 rounded-full bg-truth/10 blur-xl transition-opacity duration-500" />
+                <div className="absolute -inset-6 rounded-full bg-truth/15 blur-2xl transition-opacity duration-500" />
                 <img
                   src="/bottle.png"
                   alt="bottle"
@@ -234,27 +238,27 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
             <div
               key={player.id}
               className={cn(
-                'absolute flex flex-col items-center gap-1 transition-all duration-500',
+                'absolute flex flex-col items-center gap-1.5 transition-all duration-500',
                 isSelected && 'z-20'
               )}
               style={{
-                left: p.x - 28,
-                top: p.y - 28,
+                left: p.x - 30,
+                top: p.y - 30,
               }}
             >
-              <div className={cn('relative p-1 rounded-full transition-all', isSelected && 'scale-110')}>
-                <div className={cn('absolute -inset-1 rounded-full transition-opacity duration-500', isSelected ? 'bg-truth/20 animate-pulse' : 'bg-transparent')} />
+              <div className={cn('relative p-1.5 rounded-full transition-all', isSelected && 'scale-110')}>
+                <div className={cn('absolute -inset-1.5 rounded-full transition-opacity duration-500', isSelected ? 'bg-truth/25 animate-pulse' : 'bg-transparent')} />
                 <Avatar alt={player.nickname} avatarId={player.avatarId} size="md" />
                 {isSelected && (
                   <motion.span
                     layoutId="turn-indicator"
-                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-white bg-truth px-2 py-0.5 rounded-full whitespace-nowrap shadow-md shadow-truth/30"
+                    className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-white bg-truth px-2.5 py-0.5 rounded-full whitespace-nowrap shadow-lg shadow-truth/40"
                   >
                     your turn
                   </motion.span>
                 )}
               </div>
-              <span className={cn('text-[11px] font-medium text-text-secondary line-clamp-1 max-w-[60px] text-center', isSelected && 'text-truth font-semibold')}>
+              <span className={cn('text-[11px] font-medium text-text-secondary line-clamp-1 max-w-[64px] text-center', isSelected && 'text-truth font-bold')}>
                 {player.nickname}
               </span>
             </div>
@@ -264,27 +268,27 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, ga
         <div
           className="absolute z-20"
           style={{
-            left: center - 14,
-            top: 8,
-            width: 28,
-            height: 28,
+            left: center - 16,
+            top: 6,
+            width: 32,
+            height: 32,
           }}
         >
-          <svg viewBox="0 0 28 28" className="w-full h-full drop-shadow-lg">
-            <path d="M14 26 L6 4 L14 10 L22 4 Z" fill="#ec4899" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
+          <svg viewBox="0 0 32 32" className="w-full h-full drop-shadow-xl">
+            <path d="M16 30 L5 4 L13 12 L16 6 L19 12 L27 4 Z" fill="#ec4899" stroke="white" strokeWidth="2" strokeLinejoin="round" />
           </svg>
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-6 flex items-center gap-3">
         {isMyTurn && !spinning && !selectedPlayerId && (
           <Button size="lg" onClick={spin} className="shadow-lg shadow-truth/20">
             Spin the bottle
           </Button>
         )}
         {spinning && <span className="text-sm text-text-secondary">Spinning...</span>}
-        {selectedPlayerId && !spinning && (
-          <div className="flex items-center gap-2">
+        {isMyTurn && selectedPlayerId && !spinning && (
+          <div className="flex items-center gap-3">
             <Button size="lg" onClick={onTruth} className="shadow-lg shadow-truth/20">
               Truth
             </Button>
