@@ -331,6 +331,25 @@ export async function clearSpin(roomId: string) {
   })
 }
 
+export async function resetGame(roomId: string) {
+  const gameRef = gameDoc(roomId)
+  const playersSnap = await getDocs(playersCollection(roomId))
+  const players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() } as FirestorePlayer))
+  const turnOrder = players.map((p) => p.id)
+
+  await updateDoc(gameRef, {
+    state: 'choice',
+    turnOrder,
+    currentPlayerIndex: 0,
+    usedQuestionIds: [],
+    spinningPlayerId: null,
+    spinRotation: null,
+  })
+
+  await updateDoc(roomDoc(roomId), { status: 'playing', lastActivity: serverTimestamp() })
+  return { turnOrder }
+}
+
 export async function completeTurn(roomId: string) {
   const gameRef = gameDoc(roomId)
   await runTransaction(db, async (transaction) => {

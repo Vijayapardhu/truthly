@@ -254,7 +254,20 @@ export default function Game() {
     setSelectedPlayerId(null)
     const socket = getSocket()
     if (socket.connected && playerId) {
-      socket.emit('complete-turn', { roomId: roomId, playerId })
+      socket.emit('complete-turn', { roomId, playerId })
+    }
+  }
+
+  const handlePlayAgain = async () => {
+    if (!roomId) return
+    try {
+      await api.resetGame(roomId)
+      setPhase('choice')
+      setCurrentQuestion(null)
+      setSelectedPlayerId(null)
+      setMessages([])
+    } catch (err) {
+      console.error('Failed to play again:', err)
     }
   }
 
@@ -372,8 +385,9 @@ export default function Game() {
                   placeholder="Type your answer..."
                   className="w-full h-12 px-4 rounded-xl border border-border bg-surface text-text-primary placeholder:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-truth"
                 />
-                <div className="flex justify-center">
+                <div className="flex justify-center gap-2">
                   <Button size="md" variant="secondary" onClick={handleSkip}>Skip · 2 remaining</Button>
+                  <Button size="md" onClick={handleNext}>I'm Done</Button>
                 </div>
               </div>
               <p className="text-xs text-text-secondary text-center">
@@ -418,8 +432,8 @@ export default function Game() {
                 <Button size="lg" variant="secondary" className="flex-1" onClick={() => navigate('/stats')}>
                   View Stats
                 </Button>
-                <Button size="lg" className="flex-1 shadow-lg shadow-truth/20" onClick={handleLeave}>
-                  Back to Lobby
+                <Button size="lg" className="flex-1 shadow-lg shadow-truth/20" onClick={handlePlayAgain}>
+                  Play Again
                 </Button>
               </div>
             </div>

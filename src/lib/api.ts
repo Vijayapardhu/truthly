@@ -18,6 +18,7 @@ import {
   endGame,
   startSpin,
   clearSpin,
+  resetGame,
 } from '../services/firestore'
 
 export const api = {
@@ -95,4 +96,5 @@ export const api = {
   endGame,
   startSpin,
   clearSpin,
+  resetGame,
 }
