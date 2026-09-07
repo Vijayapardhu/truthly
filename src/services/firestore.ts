@@ -34,6 +34,7 @@ export type FirestoreRoom = {
 
 export type FirestorePlayer = {
   id: string
+  userId?: string
   nickname: string
   avatarId: string
   isHost: boolean
@@ -197,7 +198,7 @@ export async function getRoom(roomId: string) {
   return { room, players }
 }
 
-export async function joinRoom(roomId: string, data: { nickname: string; avatarId: string }) {
+export async function joinRoom(roomId: string, data: { nickname: string; avatarId: string; userId?: string }) {
   const playerId = `${data.nickname}-${Date.now()}`
   const now = serverTimestamp() as unknown as Timestamp
   const roomSnap = await getDoc(roomDoc(roomId))
@@ -206,6 +207,7 @@ export async function joinRoom(roomId: string, data: { nickname: string; avatarI
 
   const player: FirestorePlayer = {
     id: playerId,
+    userId: data.userId,
     nickname: data.nickname,
     avatarId: data.avatarId,
     isHost: false,

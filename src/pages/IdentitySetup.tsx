@@ -51,6 +51,7 @@ export default function IdentitySetup() {
       const res = await api.joinRoom(effectiveRoomId, {
         nickname: nickname.trim(),
         avatarId,
+        userId: uid,
       })
       setIdentity({ nickname: nickname.trim(), avatarId })
       const session = { playerId: res.player.id, nickname: nickname.trim(), avatarId, roomCode: effectiveRoomCode || effectiveRoomId, uid }

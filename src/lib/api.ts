@@ -64,7 +64,7 @@ export const api = {
     return rooms
   },
 
-  async joinRoom(roomId: string, data: { nickname: string; avatarId: string }) {
+  async joinRoom(roomId: string, data: { nickname: string; avatarId: string; userId?: string }) {
     const result = await firestoreJoinRoom(roomId, data)
     return { player: result.player }
   },
