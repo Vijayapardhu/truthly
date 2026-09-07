@@ -74,33 +74,20 @@
 - Circular game radius adapts to screen width
 
 ## Deployment
-- `vercel.json` configured for SPA routing
-- Firebase config in `src/lib/firebase.ts`
-- Build output in `dist/`
+- **Hosting**: Vercel (frontend) + Firebase Hosting (optional)
+- **Config files**: `vercel.json` for SPA routing, `firebase.json` for hosting rewrites
+- **Build output**: `dist/`
+- **Free-tier setup**: Firebase Spark plan with Vercel serverless functions (`/api/*`) for backend needs
+- **Deploy frontend**: Vercel with build command `npm run build`, output `dist`
 
-## OpenRouter AI
-- AI questions generated via OpenRouter API
-- Config stored in Firestore `config/openrouter` document
-- Falls back to local question bank if no config or API call fails
-- Authenticated reads only for OpenRouter config document
-
-## Chat & Social
-- Chat UI in Game page with realtime Firestore messages
-- Message timestamps and hover reactions
-- Realtime reaction counts displayed on messages
-
-## Game Statistics
-- Firestore `gameResults` collection for completed games
-- Stats page at `/stats` showing game history
-- API wrappers: `api.saveGameResult`, `api.getGameResults`, `api.getRoomGameResults`
-
-## Notifications
-- `src/services/notifications.ts` for Firebase Cloud Messaging
-- Permission request button in Lobby page
-- In-message notification handler scaffold
+## Backend (Free Tier)
+- **Primary**: Firebase Firestore + Auth (Spark plan)
+- **Serverless fallback**: Vercel Functions (`/api/*`) for any backend logic if needed
+- **Note**: Cloud Functions removed from repo; push notifications require either Blaze plan or Vercel function implementation
 
 ## Next Steps
-1. Add Firebase Authentication for persistent user accounts (Google, Apple, etc.)
-2. Wire game completion flow to `saveGameResult`
-3. Add room categories and search to Discover page
-4. Deploy to Vercel and configure Firebase hosting
+1. Deploy frontend to Vercel
+2. Add Vercel serverless functions if backend logic is needed
+3. Test OpenRouter config in Firestore (`config/openrouter`)
+4. Optional: Firebase Auth providers setup in console
+5. Optional: Add push notification delivery via Vercel function
