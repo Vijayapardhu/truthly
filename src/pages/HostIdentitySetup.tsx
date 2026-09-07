@@ -7,6 +7,8 @@ import Logo from '../components/icons/Logo'
 import { cn } from '../lib/utils'
 import { useIdentityStore } from '../stores/identity-store'
 import { getOrCreateAnonymousUserId } from '../services/auth'
+import { updateDoc, doc } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import { CheckmarkRegular } from '@fluentui/react-icons'
 
 const avatarOptions = ['Cat', 'Panda', 'Tiger', 'Pig', 'Monkey', 'Bear', 'Wolf', 'Octopus']
@@ -29,22 +31,43 @@ export default function HostIdentitySetup() {
   const setIdentity = useIdentityStore((state) => state.setIdentity)
   const [nickname, setNickname] = useState('')
   const [avatarId, setAvatarId] = useState('Cat')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const roomState = location.state as { roomCode?: string; roomId?: string } | null
+  const roomState = location.state as { roomCode?: string; roomId?: string; hostId?: string } | null
   const roomCode = roomState?.roomCode
+  const hostId = roomState?.hostId
 
   const session = loadSession()
   const effectiveRoomCode = roomCode || session?.roomCode
 
   const handleContinue = async () => {
-    if (!nickname.trim() || !effectiveRoomCode) return
-    const hostId = await getOrCreateAnonymousUserId()
-    setIdentity({ nickname: nickname.trim(), avatarId })
-    const session = { playerId: hostId, nickname: nickname.trim(), avatarId, roomCode: effectiveRoomCode }
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-    navigate(`/room/${effectiveRoomCode}`, {
-      state: session,
-    })
+    if (!nickname.trim() || !effectiveRoomCode || isLoading) return
+    setError('')
+    setIsLoading(true)
+    try {
+      const uid = await getOrCreateAnonymousUserId()
+      if (hostId && effectiveRoomCode) {
+        try {
+          await updateDoc(doc(db, 'rooms', effectiveRoomCode, 'players', hostId), {
+            nickname: nickname.trim(),
+            avatarId,
+          })
+        } catch {
+          // ignore if player doc update fails
+        }
+      }
+      setIdentity({ nickname: nickname.trim(), avatarId })
+      const sessionData = { playerId: hostId || uid, nickname: nickname.trim(), avatarId, roomCode: effectiveRoomCode }
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData))
+      navigate(`/room/${effectiveRoomCode}`, {
+        state: sessionData,
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save identity')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -95,8 +118,14 @@ export default function HostIdentitySetup() {
               </div>
             </div>
 
-            <Button size="lg" className="w-full mt-4 shadow-lg shadow-truth/20" onClick={handleContinue} disabled={!nickname.trim()}>
-              Continue →
+            {error && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            <Button size="lg" className="w-full mt-4 shadow-lg shadow-truth/20" onClick={handleContinue} disabled={!nickname.trim() || isLoading}>
+              {isLoading ? 'Saving...' : 'Continue →'}
             </Button>
           </div>
         </div>

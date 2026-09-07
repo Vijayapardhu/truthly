@@ -1,5 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import Logo from '../components/icons/Logo'
 import {
@@ -8,8 +7,6 @@ import {
   SparkleRegular,
   RocketRegular,
 } from '@fluentui/react-icons'
-import { signInWithGoogle, signInWithApple } from '../services/auth'
-import { useIdentityStore } from '../stores/identity-store'
 
 const features = [
   {
@@ -53,30 +50,6 @@ const steps = [
 ]
 
 export default function Landing() {
-  const navigate = useNavigate()
-  const setIdentity = useIdentityStore((state) => state.setIdentity)
-  const [signingIn, setSigningIn] = useState<'google' | 'apple' | null>(null)
-
-  const handleGoogleSignIn = async () => {
-    setSigningIn('google')
-    const uid = await signInWithGoogle()
-    if (uid) {
-      setIdentity({ nickname: `User-${uid.slice(0, 5)}`, avatarId: 'Cat' })
-      navigate('/discover')
-    }
-    setSigningIn(null)
-  }
-
-  const handleAppleSignIn = async () => {
-    setSigningIn('apple')
-    const uid = await signInWithApple()
-    if (uid) {
-      setIdentity({ nickname: `User-${uid.slice(0, 5)}`, avatarId: 'Cat' })
-      navigate('/discover')
-    }
-    setSigningIn(null)
-  }
-
   return (
     <div className="min-h-screen bg-off-white flex flex-col">
       <nav className="sticky top-0 z-50 bg-off-white/80 backdrop-blur-md border-b border-border">
@@ -88,12 +61,6 @@ export default function Landing() {
             <a href="#how" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">How it works</a>
             <a href="#features" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">Features</a>
             <Link to="/discover" className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">Discover</Link>
-            <Button size="sm" onClick={handleGoogleSignIn} disabled={!!signingIn}>
-              {signingIn === 'google' ? 'Signing in...' : 'Sign in with Google'}
-            </Button>
-            <Button size="sm" variant="secondary" onClick={handleAppleSignIn} disabled={!!signingIn}>
-              {signingIn === 'apple' ? 'Signing in...' : 'Sign in with Apple'}
-            </Button>
             <Link to="/create"><Button size="sm">Get Started</Button></Link>
           </div>
         </div>

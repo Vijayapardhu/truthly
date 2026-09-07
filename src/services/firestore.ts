@@ -199,6 +199,32 @@ export async function getRoom(roomId: string) {
 }
 
 export async function joinRoom(roomId: string, data: { nickname: string; avatarId: string; userId?: string }) {
+  const userId = data.userId
+  if (userId) {
+    const existingSnap = await getDocs(
+      query(playersCollection(roomId), where('userId', '==', userId))
+    )
+    if (!existingSnap.empty) {
+      const existing = existingSnap.docs[0]
+      if (existing.data().nickname !== data.nickname || existing.data().avatarId !== data.avatarId) {
+        await updateDoc(existing.ref, {
+          nickname: data.nickname,
+          avatarId: data.avatarId,
+        })
+      }
+      return { player: { id: existing.id, ...existing.data() } as FirestorePlayer }
+    }
+  }
+
+  const playersSnap = await getDocs(playersCollection(roomId))
+  const nicknameLower = data.nickname.trim().toLowerCase()
+  const duplicate = playersSnap.docs.find(
+    (d) => (d.data().nickname as string).toLowerCase() === nicknameLower
+  )
+  if (duplicate) {
+    throw new Error(`A player with the name "${data.nickname.trim()}" already exists in this room.`)
+  }
+
   const playerId = `${data.nickname}-${Date.now()}`
   const now = serverTimestamp() as unknown as Timestamp
   const roomSnap = await getDoc(roomDoc(roomId))
