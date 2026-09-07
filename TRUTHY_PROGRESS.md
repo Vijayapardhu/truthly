@@ -84,10 +84,23 @@
 - Falls back to local question bank if no config or API call fails
 - Authenticated reads only for OpenRouter config document
 
+## Chat & Social
+- Chat UI in Game page with realtime Firestore messages
+- Message timestamps and hover reactions
+- Realtime reaction counts displayed on messages
+
+## Game Statistics
+- Firestore `gameResults` collection for completed games
+- Stats page at `/stats` showing game history
+- API wrappers: `api.saveGameResult`, `api.getGameResults`, `api.getRoomGameResults`
+
+## Notifications
+- `src/services/notifications.ts` for Firebase Cloud Messaging
+- Permission request button in Lobby page
+- In-message notification handler scaffold
+
 ## Next Steps
 1. Add Firebase Authentication for persistent user accounts (Google, Apple, etc.)
-2. Add reactions and timestamps to chat UI
+2. Wire game completion flow to `saveGameResult`
 3. Add room categories and search to Discover page
-4. Implement game statistics and history
-5. Add push notifications for room invites
-6. Deploy to Vercel and configure Firebase hosting
+4. Deploy to Vercel and configure Firebase hosting
