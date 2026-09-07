@@ -113,11 +113,22 @@ export default function Game() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
 
   const formatTime = (timestamp?: number) => {
     if (!timestamp) return ''
     const date = new Date(timestamp)
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const handleReact = async (_messageId: string, emoji: string) => {
+    if (!roomId || !playerId) return
+    await api.sendChatMessage(roomId, {
+      playerId,
+      playerName: identity?.nickname || 'Anonymous',
+      playerAvatarId: identity?.avatarId || 'Cat',
+      text: emoji,
+    })
   }
 
   const currentPlayerIndex = game?.currentPlayerIndex ?? 0
@@ -360,7 +371,12 @@ export default function Game() {
             <p className="text-sm font-semibold text-text-primary">Room chat</p>
             <div className="h-40 overflow-y-auto space-y-3 pr-1">
               {messages.map((msg) => (
-                <div key={msg.id} className="flex items-start gap-3">
+                <div
+                  key={msg.id}
+                  className="flex items-start gap-3 group"
+                  onMouseEnter={() => setHoveredMessageId(msg.id)}
+                  onMouseLeave={() => setHoveredMessageId(null)}
+                >
                   <Avatar alt={msg.playerName} avatarId={msg.playerAvatarId} size="sm" />
                   <div className="flex-1">
                     <div className="flex items-baseline gap-2">
@@ -374,6 +390,20 @@ export default function Game() {
                           <span key={emoji} className="text-xs bg-surface border border-border rounded-full px-1.5 py-0.5">
                             {emoji} {users.length}
                           </span>
+                        ))}
+                      </div>
+                    )}
+                    {hoveredMessageId === msg.id && (
+                      <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {['😂', '❤️', '🔥', '👏'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => handleReact(msg.id, emoji)}
+                            className="text-xs bg-surface border border-border rounded-full px-1.5 py-0.5 hover:border-lavender transition-colors"
+                          >
+                            {emoji}
+                          </button>
                         ))}
                       </div>
                     )}

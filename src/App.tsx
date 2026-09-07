@@ -8,6 +8,7 @@ import Lobby from './pages/Lobby'
 import Game from './pages/Game'
 import Discover from './pages/Discover'
 import PrivateRoomShare from './pages/PrivateRoomShare'
+import Stats from './pages/Stats'
 import NotFound from './pages/NotFound'
 import SessionHydrator from './components/SessionHydrator'
 
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/room/:roomId" element={<Lobby />} />
         <Route path="/room/:roomId/game" element={<Game />} />
         <Route path="/room/:roomId/private" element={<PrivateRoomShare />} />
+        <Route path="/stats" element={<Stats />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

@@ -9,6 +9,7 @@ import {
   collection,
   query,
   where,
+  orderBy,
   onSnapshot,
   updateDoc,
   serverTimestamp,
@@ -300,4 +301,48 @@ export async function completeTurn(roomId: string) {
 
 export async function updateRoomLastActivity(roomId: string) {
   await updateDoc(roomDoc(roomId), { lastActivity: serverTimestamp() })
+}
+
+export type FirestoreGameResult = {
+  id: string
+  roomId: string
+  roomName: string
+  playerId: string
+  playerName: string
+  completedAt: Timestamp | null
+  turnCount: number
+}
+
+export async function saveGameResult(data: {
+  roomId: string
+  roomName: string
+  playerId: string
+  playerName: string
+  turnCount: number
+}) {
+  const resultRef = doc(collection(db, 'gameResults'))
+  const now = serverTimestamp() as unknown as Timestamp
+  const result: FirestoreGameResult = {
+    id: resultRef.id,
+    roomId: data.roomId,
+    roomName: data.roomName,
+    playerId: data.playerId,
+    playerName: data.playerName,
+    completedAt: now,
+    turnCount: data.turnCount,
+  }
+  await setDoc(resultRef, result)
+  return result
+}
+
+export async function getGameResults(playerId: string, limitCount = 20) {
+  const q = query(collection(db, 'gameResults'), where('playerId', '==', playerId), orderBy('completedAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.slice(0, limitCount).map((d) => ({ id: d.id, ...d.data() } as FirestoreGameResult))
+}
+
+export async function getRoomGameResults(roomId: string, limitCount = 20) {
+  const q = query(collection(db, 'gameResults'), where('roomId', '==', roomId), orderBy('completedAt', 'desc'))
+  const snap = await getDocs(q)
+  return snap.docs.slice(0, limitCount).map((d) => ({ id: d.id, ...d.data() } as FirestoreGameResult))
 }

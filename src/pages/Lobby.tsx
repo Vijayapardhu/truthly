@@ -9,6 +9,7 @@ import { connectSocket, disconnectSocket } from '../lib/socket'
 import Button from '../components/ui/Button'
 import Logo from '../components/icons/Logo'
 import Avatar from '../components/avatars/Avatar'
+import { requestNotificationPermission } from '../services/notifications'
 
 const SESSION_KEY = 'truthly-session'
 
@@ -161,6 +162,19 @@ export default function Lobby() {
   const isHost = !!identity && !!host && playerId === host.id
   const topicLabels = room?.topics.map((t) => t.charAt(0).toUpperCase() + t.slice(1)) || []
 
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted')
+    }
+  }, [])
+
+  const handleRequestNotifications = async () => {
+    const token = await requestNotificationPermission()
+    setNotificationsEnabled(!!token)
+  }
+
   const copyCode = () => {
     if (room?.roomCode) navigator.clipboard.writeText(room.roomCode)
   }
@@ -209,6 +223,9 @@ export default function Lobby() {
             </Button>
             <Button size="sm" variant="ghost" onClick={shareLink}>
               <ShareRegular className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => navigate('/stats')}>
+              Stats
             </Button>
             <Button size="sm" variant="ghost" onClick={() => navigate(`/room/${roomId}/private`)}>
               <SettingsRegular className="w-4 h-4" />
@@ -263,6 +280,12 @@ export default function Lobby() {
             >
               Start Game
               <ArrowRightRegular className="w-4 h-4" />
+            </Button>
+          )}
+
+          {!notificationsEnabled && (
+            <Button size="md" variant="secondary" className="w-full" onClick={handleRequestNotifications}>
+              Enable notifications
             </Button>
           )}
 

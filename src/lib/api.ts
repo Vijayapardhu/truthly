@@ -12,6 +12,9 @@ import {
   subscribeToChat,
   updateGameState,
   updateRoomLastActivity,
+  saveGameResult,
+  getGameResults,
+  getRoomGameResults,
 } from '../services/firestore'
 
 export const api = {
@@ -83,4 +86,7 @@ export const api = {
   subscribeToChat,
   updateGameState,
   updateRoomLastActivity,
+  saveGameResult,
+  getGameResults,
+  getRoomGameResults,
 }
