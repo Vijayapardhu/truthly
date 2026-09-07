@@ -1,7 +1,8 @@
 import {
   createRoom,
   getRoomByCode,
-  getRoom,
+  getRoom as getRoomData,
+  getAllRooms,
   joinRoom as firestoreJoinRoom,
   startGame as firestoreStartGame,
   getChatMessages,
@@ -23,13 +24,12 @@ export const api = {
     skipsPerPlayer: number
     hostName: string
     hostAvatarId: string
+    hostId: string
   }) {
     const code = `${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-    const hostId = `host-${Date.now()}`
     const result = await createRoom({
       ...data,
       roomCode: code,
-      hostId,
       visibility: data.visibility as 'public' | 'private',
     })
     return {
@@ -52,8 +52,13 @@ export const api = {
   },
 
   async getRoom(id: string) {
-    const result = await getRoom(id)
+    const result = await getRoomData(id)
     return result
+  },
+
+  async getAllRooms() {
+    const rooms = await getAllRooms()
+    return rooms
   },
 
   async joinRoom(roomId: string, data: { nickname: string; avatarId: string }) {

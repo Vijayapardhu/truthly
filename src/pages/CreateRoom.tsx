@@ -7,6 +7,7 @@ import Toggle from '../components/ui/Toggle'
 import { cn } from '../lib/utils'
 import type { Intensity, Visibility, Topic } from '../types'
 import { api } from '../lib/api'
+import { getOrCreateAnonymousUserId } from '../services/auth'
 import { GlobeRegular } from '@fluentui/react-icons'
 
 const defaultTopics: Topic[] = [
@@ -48,6 +49,7 @@ export default function CreateRoom() {
       if (customTopic.trim()) {
         topics.push(customTopic.trim())
       }
+      const hostId = await getOrCreateAnonymousUserId()
       const res = await api.createRoom({
         name: name.trim(),
         visibility,
@@ -57,6 +59,7 @@ export default function CreateRoom() {
         skipsPerPlayer,
         hostName: 'Host',
         hostAvatarId: 'Cat',
+        hostId,
       })
       navigate('/host-identity', {
         state: {

@@ -6,6 +6,7 @@ import Avatar from '../components/avatars/Avatar'
 import Logo from '../components/icons/Logo'
 import { cn } from '../lib/utils'
 import { useIdentityStore } from '../stores/identity-store'
+import { getOrCreateAnonymousUserId } from '../services/auth'
 import { CheckmarkRegular } from '@fluentui/react-icons'
 
 const avatarOptions = ['Cat', 'Panda', 'Tiger', 'Pig', 'Monkey', 'Bear', 'Wolf', 'Octopus']
@@ -17,12 +18,12 @@ export default function HostIdentitySetup() {
   const [nickname, setNickname] = useState('')
   const [avatarId, setAvatarId] = useState('Cat')
 
-  const roomState = location.state as { roomCode?: string; roomId?: string; hostId?: string } | null
+  const roomState = location.state as { roomCode?: string; roomId?: string } | null
   const roomCode = roomState?.roomCode
-  const hostId = roomState?.hostId
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!nickname.trim() || !roomCode) return
+    const hostId = await getOrCreateAnonymousUserId()
     setIdentity({ nickname: nickname.trim(), avatarId })
     const session = { playerId: hostId, nickname: nickname.trim(), avatarId, roomCode }
     localStorage.setItem('truthly-session', JSON.stringify(session))

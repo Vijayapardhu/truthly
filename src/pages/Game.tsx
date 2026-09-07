@@ -10,6 +10,8 @@ import Emoji from '../components/ui/Emoji'
 import Avatar from '../components/avatars/Avatar'
 import { playSelectSound, playWinSound, resumeAudioContext } from '../lib/sound'
 import { lightImpact, mediumImpact, successImpact } from '../lib/haptic'
+import { api } from '../lib/api'
+import { getRandomQuestion } from '../services/questions'
 
 const SESSION_KEY = 'truthly-session'
 
@@ -35,6 +37,15 @@ function clearSession() {
 
 type TurnPhase = 'choice' | 'truth' | 'dare' | 'completed'
 
+interface ChatMessage {
+  id: string
+  playerId: string
+  playerName: string
+  playerAvatarId: string
+  text: string
+  reactions: Record<string, string[]>
+}
+
 export default function Game() {
   const { roomId } = useParams()
   const navigate = useNavigate()
@@ -52,27 +63,40 @@ export default function Game() {
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null)
   const [lastType, setLastType] = useState<'truth' | 'dare'>('truth')
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
 
   const currentPlayerIndex = game?.currentPlayerIndex ?? 0
   const currentPlayer = players[currentPlayerIndex] || players[0]
   const isMyTurn = !!identity && !!currentPlayer && currentPlayer.nickname === identity.nickname
 
-  const questions: Record<string, string[]> = {
-    funny: [
-      "What's the most embarrassing thing you've done at a party?",
-      "What's a secret talent no one knows about?",
-      "What's the weirdest food combination you secretly enjoy?",
-    ],
-    friendship: [
-      "What's something you've always wanted to tell your closest friend?",
-      "Who here do you think will still be in your life in 10 years?",
-      "What's the best gift you've ever received?",
-    ],
-    memories: [
-      "What's a childhood memory that still makes you smile?",
-      "What's the most trouble you ever got in as a kid?",
-      "What's a place you'd love to revisit?",
-    ],
+  const handleTruth = () => {
+    if (!isMyTurn || !selectedPlayerId || !playerId) return
+    resumeAudioContext()
+    playSelectSound()
+    mediumImpact()
+    setPhase('truth')
+    setLastType('truth')
+    const q = getRandomQuestion(room?.topics || ['funny', 'friendship'], room?.intensity || 'general')
+    setCurrentQuestion(q)
+    const socket = getSocket()
+    if (socket.connected) {
+      socket.emit('select-truth', { roomId: roomId, playerId })
+    }
+  }
+
+  const handleDare = () => {
+    if (!isMyTurn || !selectedPlayerId || !playerId) return
+    resumeAudioContext()
+    playSelectSound()
+    mediumImpact()
+    setPhase('dare')
+    setLastType('dare')
+    setCurrentQuestion("Do your best celebrity impression for 20 seconds.")
+    const socket = getSocket()
+    if (socket.connected) {
+      socket.emit('select-dare', { roomId: roomId, playerId })
+    }
   }
 
   useEffect(() => {
@@ -112,36 +136,25 @@ export default function Game() {
     }
   }, [roomId, room, navigate])
 
-  const handleTruth = () => {
-    if (!isMyTurn || !selectedPlayerId) return
-    resumeAudioContext()
-    playSelectSound()
-    mediumImpact()
-    setPhase('truth')
-    setLastType('truth')
-    const topics = room?.topics || ['funny', 'friendship']
-    const allQuestions = topics.flatMap((t) => questions[t.toLowerCase()] || [])
-    const q = allQuestions[Math.floor(Math.random() * allQuestions.length)] || "What's something you've always wanted to tell your closest friend?"
-    setCurrentQuestion(q)
-    const socket = getSocket()
-    if (socket.connected) {
-      socket.emit('select-truth', { roomId: roomId, playerId: playerId })
-    }
-  }
+  useEffect(() => {
+    if (!roomId || !identity) return
+    let unsub: (() => void) | undefined
 
-  const handleDare = () => {
-    if (!isMyTurn || !selectedPlayerId) return
-    resumeAudioContext()
-    playSelectSound()
-    mediumImpact()
-    setPhase('dare')
-    setLastType('dare')
-    setCurrentQuestion("Do your best celebrity impression for 20 seconds.")
-    const socket = getSocket()
-    if (socket.connected) {
-      socket.emit('select-dare', { roomId: roomId, playerId: playerId })
+    async function loadChat() {
+      if (!roomId) return
+      const msgs = await api.getChatMessages(roomId)
+      setMessages(msgs as ChatMessage[])
+      unsub = api.subscribeToChat(roomId, (updated) => {
+        setMessages(updated as ChatMessage[])
+      })
     }
-  }
+
+    loadChat()
+
+    return () => {
+      if (unsub) unsub()
+    }
+  }, [roomId, identity])
 
   const handleSkip = () => {
     resumeAudioContext()
@@ -158,14 +171,26 @@ export default function Game() {
     setCurrentQuestion(null)
     setSelectedPlayerId(null)
     const socket = getSocket()
-    if (socket.connected) {
-      socket.emit('complete-turn', { roomId: roomId, playerId: playerId })
+    if (socket.connected && playerId) {
+      socket.emit('complete-turn', { roomId: roomId, playerId })
     }
+  }
+
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || !roomId || !identity) return
+    const text = chatInput.trim()
+    setChatInput('')
+    await api.sendChatMessage(roomId, {
+      playerId: playerId || identity.nickname,
+      playerName: identity.nickname,
+      playerAvatarId: identity.avatarId,
+      text,
+    })
   }
 
   const handleLeave = async () => {
     const socket = getSocket()
-    if (socket.connected && roomId && identity) {
+    if (socket.connected && roomId && identity && playerId) {
       socket.emit('leave-room', { roomId, playerId })
     }
     resetRoom()
@@ -268,6 +293,35 @@ export default function Game() {
               <Button className="w-full shadow-lg shadow-truth/20" onClick={handleNext}>Continue →</Button>
             </div>
           )}
+
+          <div className="bg-surface border border-border rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+            <p className="text-sm font-semibold text-text-primary">Room chat</p>
+            <div className="h-40 overflow-y-auto space-y-3 pr-1">
+              {messages.map((msg) => (
+                <div key={msg.id} className="flex items-start gap-3">
+                  <Avatar alt={msg.playerName} avatarId={msg.playerAvatarId} size="sm" />
+                  <div className="flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-sm font-semibold text-text-primary">{msg.playerName}</p>
+                    </div>
+                    <p className="text-sm text-text-secondary break-words">{msg.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                placeholder="Type a message..."
+                className="flex-1 h-11 px-4 rounded-xl border border-border bg-surface text-text-primary placeholder:text-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-truth"
+              />
+              <Button size="md" onClick={handleSendChat} disabled={!chatInput.trim()}>
+                Send
+              </Button>
+            </div>
+          </div>
         </div>
       </main>
     </div>

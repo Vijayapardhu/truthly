@@ -180,6 +180,11 @@ export async function getRoomByCode(code: string): Promise<FirestoreRoom> {
   return roomFromDoc(snap.id, snap.data() as Record<string, unknown>)
 }
 
+export async function getAllRooms(): Promise<FirestoreRoom[]> {
+  const snap = await getDocs(collection(db, 'rooms'))
+  return snap.docs.map((d) => roomFromDoc(d.id, d.data() as Record<string, unknown>))
+}
+
 export async function getRoom(roomId: string) {
   const roomSnap = await getDoc(roomDoc(roomId))
   if (!roomSnap.exists()) throw new Error('Room not found')
