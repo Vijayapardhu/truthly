@@ -36,7 +36,7 @@ function clearSession() {
   localStorage.removeItem(SESSION_KEY)
 }
 
-type TurnPhase = 'choice' | 'truth' | 'dare' | 'completed'
+type TurnPhase = 'choice' | 'truth' | 'dare' | 'completed' | 'gameover'
 
 interface ChatMessage {
   id: string
@@ -202,6 +202,12 @@ export default function Game() {
   }, [roomId, room, navigate])
 
   useEffect(() => {
+    if (game?.state === 'ended') {
+      setPhase('gameover')
+    }
+  }, [game?.state])
+
+  useEffect(() => {
     if (!roomId || !identity) return
     let unsub: (() => void) | undefined
 
@@ -246,6 +252,24 @@ export default function Game() {
     const socket = getSocket()
     if (socket.connected && playerId) {
       socket.emit('complete-turn', { roomId: roomId, playerId })
+    }
+  }
+
+  const handleEndGame = async () => {
+    if (!roomId || !playerId || !room) return
+    try {
+      const turnCount = game?.turnOrder?.length || players.length
+      await api.saveGameResult({
+        roomId: room.id,
+        roomName: room.name,
+        playerId,
+        playerName: identity?.nickname || 'Host',
+        turnCount,
+      })
+      await api.endGame(roomId)
+      setPhase('gameover')
+    } catch (err) {
+      console.error('Failed to end game:', err)
     }
   }
 
@@ -300,6 +324,11 @@ export default function Game() {
             <span className="text-xs text-text-secondary font-mono bg-surface border border-border px-2 py-1 rounded-lg hidden sm:inline-block">
               {roomId}
             </span>
+            {identity && players.find((p) => p.isHost)?.nickname === identity.nickname && phase !== 'gameover' && (
+              <Button size="sm" variant="danger" onClick={handleEndGame}>
+                End Game
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={handleLeave} className="gap-2">
               <ArrowRightRegular className="w-4 h-4" />
               <span className="hidden sm:inline">Leave</span>
@@ -364,6 +393,26 @@ export default function Game() {
                 </div>
               </div>
               <Button className="w-full shadow-lg shadow-truth/20" onClick={handleNext}>Continue →</Button>
+            </div>
+          )}
+
+          {phase === 'gameover' && (
+            <div className="bg-surface border border-border rounded-2xl p-6 sm:p-8 shadow-sm space-y-5 text-center">
+              <h2 className="text-2xl font-display font-bold text-text-primary">Game over!</h2>
+              <p className="text-text-secondary">Thanks for playing.</p>
+              <div className="flex justify-center gap-3 text-2xl">
+                <Emoji symbol="🎉" />
+                <Emoji symbol="❤️" />
+                <Emoji symbol="🔥" />
+              </div>
+              <div className="flex gap-2">
+                <Button size="lg" variant="secondary" className="flex-1" onClick={() => navigate('/stats')}>
+                  View Stats
+                </Button>
+                <Button size="lg" className="flex-1 shadow-lg shadow-truth/20" onClick={handleLeave}>
+                  Back to Lobby
+                </Button>
+              </div>
             </div>
           )}
 

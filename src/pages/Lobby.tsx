@@ -206,8 +206,8 @@ export default function Lobby() {
         playerName: identity?.nickname || 'Host',
         turnCount,
       })
-      await api.startGame(resolvedRoomId, playerId)
-      navigate(`/room/${roomId}/game`)
+      await api.endGame(resolvedRoomId)
+      navigate(`/room/${roomId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to end game')
     }

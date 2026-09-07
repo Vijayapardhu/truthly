@@ -1,7 +1,7 @@
 export type Intensity = 'general' | 'close' | 'deep'
 export type Visibility = 'public' | 'private'
 export type GameStatus = 'lobby' | 'playing' | 'paused' | 'ended'
-export type TurnState = 'idle' | 'choice' | 'answering' | 'completed' | 'next_turn'
+export type TurnState = 'idle' | 'choice' | 'answering' | 'completed' | 'next_turn' | 'ended'
 export type QuestionType = 'truth' | 'dare'
 
 export interface Player {

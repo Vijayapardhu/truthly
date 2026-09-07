@@ -305,6 +305,14 @@ export async function updateRoomLastActivity(roomId: string) {
   await updateDoc(roomDoc(roomId), { lastActivity: serverTimestamp() })
 }
 
+export async function endGame(roomId: string) {
+  await updateDoc(gameDoc(roomId), {
+    state: 'ended',
+    currentPlayerIndex: 0,
+  })
+  await updateDoc(roomDoc(roomId), { status: 'ended', lastActivity: serverTimestamp() })
+}
+
 export type FirestoreGameResult = {
   id: string
   roomId: string

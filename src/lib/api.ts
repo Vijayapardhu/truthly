@@ -15,6 +15,7 @@ import {
   saveGameResult,
   getGameResults,
   getRoomGameResults,
+  endGame,
 } from '../services/firestore'
 
 export const api = {
@@ -89,4 +90,5 @@ export const api = {
   saveGameResult,
   getGameResults,
   getRoomGameResults,
+  endGame,
 }

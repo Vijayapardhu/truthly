@@ -1,5 +1,7 @@
 import { api } from './api'
 import { completeTurn } from '../services/firestore'
+import { deleteDoc, doc } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 
 type PlayerJoinedHandler = (data: { playerId: string; players: any[] }) => void
 type PlayerLeftHandler = (data: { playerId: string; players: any[] }) => void
@@ -88,6 +90,13 @@ export async function emit(event: string, data: any) {
   }
 
   if (event === 'leave-room') {
+    if (roomId && data?.playerId) {
+      try {
+        await deleteDoc(doc(db, 'rooms', roomId, 'players', data.playerId))
+      } catch {
+        // ignore cleanup errors
+      }
+    }
     cleanup()
   }
 
