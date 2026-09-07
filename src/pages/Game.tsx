@@ -45,6 +45,7 @@ interface ChatMessage {
   playerAvatarId: string
   text: string
   reactions: Record<string, string[]>
+  createdAt?: number
 }
 
 export default function Game() {
@@ -113,33 +114,24 @@ export default function Game() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
 
-  const formatTime = (timestamp: number) => {
+  const formatTime = (timestamp?: number) => {
+    if (!timestamp) return ''
     const date = new Date(timestamp)
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const handleReact = async (messageId: string, emoji: string) => {
-    if (!roomId || !playerId) return
-    await api.sendChatMessage(roomId, {
-      playerId,
-      playerName: identity?.nickname || 'Anonymous',
-      playerAvatarId: identity?.avatarId || 'Cat',
-      text: emoji,
-    })
   }
 
   const currentPlayerIndex = game?.currentPlayerIndex ?? 0
   const currentPlayer = players[currentPlayerIndex] || players[0]
   const isMyTurn = !!identity && !!currentPlayer && currentPlayer.nickname === identity.nickname
 
-  const handleTruth = () => {
+  const handleTruth = async () => {
     if (!isMyTurn || !selectedPlayerId || !playerId) return
     resumeAudioContext()
     playSelectSound()
     mediumImpact()
     setPhase('truth')
     setLastType('truth')
-    const q = getRandomQuestion(room?.topics || ['funny', 'friendship'], room?.intensity || 'general')
+    const q = await getRandomQuestion(room?.topics || ['funny', 'friendship'], room?.intensity || 'general')
     setCurrentQuestion(q)
     const socket = getSocket()
     if (socket.connected) {
@@ -205,9 +197,17 @@ export default function Game() {
     async function loadChat() {
       if (!roomId) return
       const msgs = await api.getChatMessages(roomId)
-      setMessages(msgs as ChatMessage[])
+      const mapped = (msgs as any[]).map((msg) => ({
+        ...msg,
+        createdAt: typeof msg.createdAt?.toMillis === 'function' ? msg.createdAt.toMillis() : typeof msg.createdAt === 'number' ? msg.createdAt : undefined,
+      }))
+      setMessages(mapped as ChatMessage[])
       unsub = api.subscribeToChat(roomId, (updated) => {
-        setMessages(updated as ChatMessage[])
+        const mappedUpdated = (updated as any[]).map((msg) => ({
+          ...msg,
+          createdAt: typeof msg.createdAt?.toMillis === 'function' ? msg.createdAt.toMillis() : typeof msg.createdAt === 'number' ? msg.createdAt : undefined,
+        }))
+        setMessages(mappedUpdated as ChatMessage[])
       })
     }
 
