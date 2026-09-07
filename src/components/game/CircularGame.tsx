@@ -1,69 +1,96 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, useAnimation } from 'framer-motion'
-import type { Player } from '../../types'
+import type { Player, GameState } from '../../types'
 import Avatar from '../avatars/Avatar'
 import Button from '../ui/Button'
 import { cn } from '../../lib/utils'
 import { playSpinSound, resumeAudioContext } from '../../lib/sound'
-import { heavyImpact } from '../../lib/haptic'
+import { heavyImpact, successImpact } from '../../lib/haptic'
+import { api } from '../../lib/api'
 
 interface CircularGameProps {
   players: Player[]
   currentPlayerIndex: number
   isMyTurn: boolean
+  game: GameState | null
+  roomId?: string
   onSpinEnd?: (playerId: string) => void
   onTruth?: () => void
   onDare?: () => void
+  hapticsEnabled?: boolean
 }
 
 const normalize = (angle: number) => ((angle % 360) + 360) % 360
 
-export default function CircularGame({ players, currentPlayerIndex, isMyTurn, onSpinEnd, onTruth, onDare }: CircularGameProps) {
+function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+}
+
+export default function CircularGame({ players, currentPlayerIndex, isMyTurn, game, roomId, onSpinEnd, onTruth, onDare, hapticsEnabled = true }: CircularGameProps) {
   const [spinning, setSpinning] = useState(false)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const controls = useAnimation()
   const [currentRotation, setCurrentRotation] = useState(0)
+  const remoteSpinRef = useRef<{ playerId: string; targetRotation: number } | null>(null)
+
+  const size = useMemo(() => {
+    if (typeof window === 'undefined') return 440
+    const vw = window.innerWidth
+    if (vw < 360) return 340
+    if (vw < 480) return 380
+    return 440
+  }, [])
+
+  const center = size / 2
+  const tableRadius = size / 2 - 24
+  const bottleSize = Math.max(72, size * 0.22)
 
   const radius = useMemo(() => {
-    if (typeof window === 'undefined') return 140
-    const vw = window.innerWidth
-    if (vw < 360) return 110
-    if (vw < 480) return 130
-    return 160
-  }, [])
+    return tableRadius - bottleSize / 2 - 24
+  }, [tableRadius, bottleSize])
 
   const positions = useMemo(() => {
     const count = players.length || 1
     const angleStep = 360 / count
     return players.map((_, i) => {
-      const angle = i * angleStep - 90
-      const rad = (angle * Math.PI) / 180
-      const x = Math.cos(rad) * radius
-      const y = Math.sin(rad) * radius
-      return { x, y, angle }
+      const angle = i * angleStep
+      return { angle }
     })
-  }, [players, radius])
+  }, [players])
+
+  const triggerHaptic = useCallback((fn: () => void) => {
+    if (hapticsEnabled) fn()
+  }, [hapticsEnabled])
 
   const spin = useCallback(async () => {
     if (spinning || players.length === 0) return
     setSelectedPlayerId(null)
     setSpinning(true)
-    resumeAudioContext()
-    playSpinSound()
-    heavyImpact()
+    triggerHaptic(resumeAudioContext)
+    triggerHaptic(playSpinSound)
+    triggerHaptic(heavyImpact)
 
-    const spins = 5 + Math.floor(Math.random() * 5)
+    const spins = 6 + Math.floor(Math.random() * 6)
     const extraDegrees = Math.floor(Math.random() * 360)
     const targetRotation = currentRotation + spins * 360 + extraDegrees
-    const finalAngle = normalize(targetRotation)
+
+    if (roomId) {
+      try {
+        await api.startSpin(roomId, '', targetRotation)
+      } catch {
+        // ignore sync error, spin still plays locally
+      }
+    }
 
     await controls.start({
       rotate: targetRotation,
-      transition: { duration: 3.2, ease: [0.2, 0.8, 0.3, 1] },
+      transition: { duration: 3.8, ease: [0.15, 0.85, 0.25, 1] },
     })
 
     const count = players.length || 1
     const angleStep = 360 / count
+    const finalAngle = normalize(targetRotation)
     const normalizedFinal = normalize(360 - finalAngle)
     const selectedIndex = Math.round(normalizedFinal / angleStep) % count
     const selected = players[selectedIndex]
@@ -71,31 +98,137 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, on
     setCurrentRotation(targetRotation)
     setSelectedPlayerId(selected.id)
     setSpinning(false)
+    triggerHaptic(successImpact)
     onSpinEnd?.(selected.id)
-  }, [spinning, players, currentRotation, controls, onSpinEnd])
+
+    if (roomId) {
+      try {
+        await api.clearSpin(roomId)
+      } catch {
+        // ignore
+      }
+    }
+  }, [spinning, players, currentRotation, controls, onSpinEnd, triggerHaptic])
 
   useEffect(() => {
-    if (currentPlayerIndex >= 0 && currentPlayerIndex < players.length) {
+    if (!game) return
+    const remoteSpinningId = game.spinningPlayerId
+    const remoteRotation = game.spinRotation
+
+    if (remoteSpinningId && remoteRotation !== null && remoteRotation !== undefined && !spinning) {
+      remoteSpinRef.current = { playerId: remoteSpinningId, targetRotation: remoteRotation }
+      setSpinning(true)
+      setSelectedPlayerId(null)
+      triggerHaptic(resumeAudioContext)
+      triggerHaptic(playSpinSound)
+      triggerHaptic(heavyImpact)
+
+      controls.start({
+        rotate: remoteRotation,
+        transition: { duration: 3.8, ease: [0.15, 0.85, 0.25, 1] },
+      }).then(() => {
+        const count = players.length || 1
+        const angleStep = 360 / count
+        const finalAngle = normalize(remoteRotation)
+        const normalizedFinal = normalize(360 - finalAngle)
+        const selectedIndex = Math.round(normalizedFinal / angleStep) % count
+        const selected = players[selectedIndex]
+
+        setCurrentRotation(remoteRotation)
+        setSelectedPlayerId(selected.id)
+        setSpinning(false)
+        triggerHaptic(successImpact)
+        onSpinEnd?.(selected.id)
+        remoteSpinRef.current = null
+      })
+    } else if (!remoteSpinningId && spinning && remoteSpinRef.current) {
+      remoteSpinRef.current = null
+    }
+  }, [game?.spinningPlayerId, game?.spinRotation, spinning, players.length, controls, onSpinEnd, triggerHaptic])
+
+  useEffect(() => {
+    if (currentPlayerIndex >= 0 && currentPlayerIndex < players.length && !spinning && !remoteSpinRef.current) {
       const targetDeg = -positions[currentPlayerIndex].angle
       controls.start({ rotate: targetDeg, transition: { duration: 0.6, ease: 'easeOut' } })
       setCurrentRotation(targetDeg)
     }
-  }, [currentPlayerIndex, players.length, positions, controls])
+  }, [currentPlayerIndex, players.length, positions, controls, spinning])
+
+  const selectedIndex = players.findIndex((p) => p.id === selectedPlayerId)
+  const selectedAngle = selectedIndex >= 0 ? positions[selectedIndex].angle : null
 
   return (
-    <div className="relative flex items-center justify-center w-full" style={{ height: Math.max(420, radius * 2 + 180) }}>
-      <div className="relative" style={{ width: radius * 2 + 160, height: radius * 2 + 160 }}>
+    <div className="relative flex flex-col items-center justify-center w-full" style={{ height: size + 140 }}>
+      <div className="relative" style={{ width: size, height: size }}>
+        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-surface to-off-white border border-border shadow-xl shadow-truth/5" />
+
+        <div className="absolute inset-4 rounded-full border border-border/60" />
+
+        <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
+          {positions.map((pos, i) => {
+            const start = polarToCartesian(center, center, 36, pos.angle)
+            const end = polarToCartesian(center, center, radius, pos.angle)
+            const isSelected = selectedPlayerId === players[i]?.id
+            return (
+              <line
+                key={i}
+                x1={start.x}
+                y1={start.y}
+                x2={end.x}
+                y2={end.y}
+                stroke={isSelected ? '#ec4899' : '#e5e7eb'}
+                strokeWidth={isSelected ? 3 : 1.5}
+                strokeDasharray={isSelected ? '0' : '4 4'}
+                className={cn('transition-all duration-500', isSelected && 'drop-shadow-sm')}
+              />
+            )
+          })}
+        </svg>
+
+        {selectedPlayerId && selectedAngle !== null && (
+          <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
+            {(() => {
+              const start = polarToCartesian(center, center, 36, selectedAngle)
+              const end = polarToCartesian(center, center, radius + 28, selectedAngle)
+              return (
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke="#ec4899"
+                  strokeWidth={3.5}
+                  strokeLinecap="round"
+                  className="animate-pulse"
+                />
+              )
+            })()}
+          </svg>
+        )}
+
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative w-40 h-40 sm:w-52 sm:h-52">
-            <div className="absolute inset-0 rounded-full bg-truth/5 border border-border/80" />
-            <motion.div className="absolute inset-0 flex items-center justify-center" animate={controls} style={{ rotate: currentRotation }}>
-              <img src="/bottle.png" alt="bottle" className="w-24 h-24 sm:w-32 sm:h-32 object-contain drop-shadow-xl" draggable={false} />
+          <div className="relative" style={{ width: bottleSize, height: bottleSize }}>
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center"
+              animate={controls}
+              style={{ rotate: currentRotation }}
+            >
+              <div className="relative">
+                <div className="absolute -inset-4 rounded-full bg-truth/10 blur-xl transition-opacity duration-500" />
+                <img
+                  src="/bottle.png"
+                  alt="bottle"
+                  className="relative w-full h-full object-contain drop-shadow-2xl"
+                  draggable={false}
+                />
+              </div>
             </motion.div>
           </div>
         </div>
 
         {players.map((player, i) => {
           const pos = positions[i]
+          const p = polarToCartesian(center, center, radius, pos.angle)
           const isSelected = selectedPlayerId === player.id
           return (
             <div
@@ -105,30 +238,45 @@ export default function CircularGame({ players, currentPlayerIndex, isMyTurn, on
                 isSelected && 'z-20'
               )}
               style={{
-                left: `calc(50% + ${pos.x}px - 24px)`,
-                top: `calc(50% + ${pos.y}px - 24px)`,
+                left: p.x - 28,
+                top: p.y - 28,
               }}
             >
               <div className={cn('relative p-1 rounded-full transition-all', isSelected && 'scale-110')}>
+                <div className={cn('absolute -inset-1 rounded-full transition-opacity duration-500', isSelected ? 'bg-truth/20 animate-pulse' : 'bg-transparent')} />
                 <Avatar alt={player.nickname} avatarId={player.avatarId} size="md" />
                 {isSelected && (
                   <motion.span
                     layoutId="turn-indicator"
-                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-truth bg-truth-light px-2 py-0.5 rounded-full"
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-white bg-truth px-2 py-0.5 rounded-full whitespace-nowrap shadow-md shadow-truth/30"
                   >
                     your turn
                   </motion.span>
                 )}
               </div>
-              <span className={cn('text-[11px] font-medium text-text-secondary line-clamp-1', isSelected && 'text-truth')}>
+              <span className={cn('text-[11px] font-medium text-text-secondary line-clamp-1 max-w-[60px] text-center', isSelected && 'text-truth font-semibold')}>
                 {player.nickname}
               </span>
             </div>
           )
         })}
+
+        <div
+          className="absolute z-20"
+          style={{
+            left: center - 14,
+            top: 8,
+            width: 28,
+            height: 28,
+          }}
+        >
+          <svg viewBox="0 0 28 28" className="w-full h-full drop-shadow-lg">
+            <path d="M14 26 L6 4 L14 10 L22 4 Z" fill="#ec4899" stroke="white" strokeWidth="1.5" strokeLinejoin="round" />
+          </svg>
+        </div>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+      <div className="mt-4 flex items-center gap-2">
         {isMyTurn && !spinning && !selectedPlayerId && (
           <Button size="lg" onClick={spin} className="shadow-lg shadow-truth/20">
             Spin the bottle

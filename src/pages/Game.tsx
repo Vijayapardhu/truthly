@@ -114,6 +114,7 @@ export default function Game() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
+  const [hapticsEnabled, setHapticsEnabled] = useState(true)
 
   const formatTime = (timestamp?: number) => {
     if (!timestamp) return ''
@@ -172,7 +173,7 @@ export default function Game() {
     const socket = connectSocket()
     socket.emit('join-room', { roomId, playerId })
 
-    const handleGameStateUpdated = (data: { game: { id: string; turnOrder: string[]; currentPlayerIndex: number; state: string; usedQuestionIds: string[] }; currentPlayerId: string | null }) => {
+    const handleGameStateUpdated = (data: { game: { id: string; turnOrder: string[]; currentPlayerIndex: number; state: string; usedQuestionIds: string[]; spinningPlayerId?: string | null; spinRotation?: number | null }; currentPlayerId: string | null }) => {
       const gs = data.game
       setGame({
         turnOrder: gs.turnOrder,
@@ -180,6 +181,8 @@ export default function Game() {
         state: gs.state as any,
         usedQuestionIds: gs.usedQuestionIds,
         currentQuestion: undefined,
+        spinningPlayerId: gs.spinningPlayerId,
+        spinRotation: gs.spinRotation,
       })
       setPhase(gs.state === 'choice' ? 'choice' : 'completed')
       setCurrentQuestion(null)
@@ -329,6 +332,9 @@ export default function Game() {
                 End Game
               </Button>
             )}
+            <Button size="sm" variant="ghost" onClick={() => setHapticsEnabled((v) => !v)} className="gap-1">
+              {hapticsEnabled ? 'Haptics: On' : 'Haptics: Off'}
+            </Button>
             <Button size="sm" variant="ghost" onClick={handleLeave} className="gap-2">
               <ArrowRightRegular className="w-4 h-4" />
               <span className="hidden sm:inline">Leave</span>
@@ -343,9 +349,12 @@ export default function Game() {
             players={players}
             currentPlayerIndex={currentPlayerIndex}
             isMyTurn={isMyTurn}
+            game={game}
+            roomId={roomId}
             onSpinEnd={handleSpinEnd}
             onTruth={handleTruth}
             onDare={handleDare}
+            hapticsEnabled={hapticsEnabled}
           />
 
           {(phase === 'truth' || phase === 'dare') && currentQuestion && (

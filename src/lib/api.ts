@@ -16,6 +16,8 @@ import {
   getGameResults,
   getRoomGameResults,
   endGame,
+  startSpin,
+  clearSpin,
 } from '../services/firestore'
 
 export const api = {
@@ -91,4 +93,6 @@ export const api = {
   getGameResults,
   getRoomGameResults,
   endGame,
+  startSpin,
+  clearSpin,
 }

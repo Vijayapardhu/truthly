@@ -62,6 +62,8 @@ export interface GameState {
   state: TurnState
   usedQuestionIds: string[]
   currentQuestion?: Question
+  spinningPlayerId?: string | null
+  spinRotation?: number | null
 }
 
 export interface Identity {

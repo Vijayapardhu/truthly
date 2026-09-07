@@ -51,6 +51,8 @@ export type FirestoreGame = {
   usedQuestionIds: string[]
   currentQuestion?: string
   createdAt: Timestamp | null
+  spinningPlayerId?: string | null
+  spinRotation?: number | null
 }
 
 export type FirestoreChatMessage = {
@@ -102,6 +104,8 @@ function gameFromDoc(id: string, data: Record<string, unknown>): FirestoreGame {
     usedQuestionIds: (data.usedQuestionIds as string[]) || [],
     currentQuestion: data.currentQuestion as string | undefined,
     createdAt: data.createdAt as Timestamp | null,
+    spinningPlayerId: (data.spinningPlayerId as string | null) || null,
+    spinRotation: (data.spinRotation as number) ?? null,
   }
 }
 
@@ -311,6 +315,20 @@ export function subscribeToChat(roomId: string, callback: (messages: FirestoreCh
 
 export async function updateGameState(roomId: string, updates: Partial<FirestoreGame>) {
   await updateDoc(gameDoc(roomId), updates)
+}
+
+export async function startSpin(roomId: string, playerId: string, targetRotation: number) {
+  await updateDoc(gameDoc(roomId), {
+    spinningPlayerId: playerId,
+    spinRotation: targetRotation,
+  })
+}
+
+export async function clearSpin(roomId: string) {
+  await updateDoc(gameDoc(roomId), {
+    spinningPlayerId: null,
+    spinRotation: null,
+  })
 }
 
 export async function completeTurn(roomId: string) {
