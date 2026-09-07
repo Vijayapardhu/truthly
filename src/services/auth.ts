@@ -1,5 +1,11 @@
 import { auth } from '../lib/firebase'
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth'
+import {
+  signInAnonymously,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  OAuthProvider,
+} from 'firebase/auth'
 
 let currentUserPromise: Promise<string> | null = null
 
@@ -22,6 +28,26 @@ export async function getOrCreateAnonymousUserId(): Promise<string> {
   })
 
   return currentUserPromise
+}
+
+export async function signInWithGoogle(): Promise<string | null> {
+  try {
+    const provider = new GoogleAuthProvider()
+    const cred = await signInWithPopup(auth, provider)
+    return cred.user.uid
+  } catch {
+    return null
+  }
+}
+
+export async function signInWithApple(): Promise<string | null> {
+  try {
+    const provider = new OAuthProvider('apple.com')
+    const cred = await signInWithPopup(auth, provider)
+    return cred.user.uid
+  } catch {
+    return null
+  }
 }
 
 export function onAnonymousUser(callback: (uid: string | null) => void) {
